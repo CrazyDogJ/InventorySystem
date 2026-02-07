@@ -273,7 +273,9 @@ bool UItemProcessor_Stackable::DragDropItem(FInventoryItemList& DragItemList, in
 	FInventoryItemList& DropItemList, int DropIndex)
 {
 	// Not valid when drag slot is empty!!!
-	if (UInventorySystemLibrary::IsSlotEmpty(DragItemList, DragIndex) || !DropItemList.ItemList.IsValidIndex(DropIndex)) return false;
+	if (UInventorySystemLibrary::IsSlotEmpty(DragItemList, DragIndex) ||
+		!DropItemList.ItemList.IsValidIndex(DropIndex) ||
+		!DragItemList.ItemList.IsValidIndex(DragIndex)) return false;
 
 	auto DragItemInstance = DragItemList.ItemList[DragIndex].ItemInstance;
 	auto DropItemInstance = DropItemList.ItemList[DropIndex].ItemInstance;

@@ -41,6 +41,9 @@ public:
 #if WITH_EDITOR
 	UFUNCTION(BlueprintCallable, CallInEditor, DisplayName = "Refresh Additional Item Slot Data", Category = "Inventory System|Item Actor")
 	void RefreshItemInstance();
+
+	void CheckShouldRefresh();
+	void OnItemDefPropertyChanged(const FPropertyChangedEvent& PropertyChangedEvent);
 #endif
 	// On actor picked up.
 	void NotifyItemActorPickedUp();

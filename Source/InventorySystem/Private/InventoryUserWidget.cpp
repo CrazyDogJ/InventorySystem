@@ -55,16 +55,21 @@ UInventoryItemInstance* UInventoryUserWidget::GetCurrentItemInstance() const
 
 UInventoryUserWidget* UInventoryUserWidget::CreateChildUserWidget(TSubclassOf<UInventoryUserWidget> InUserWidgetClass, int InIndex)
 {
-	const auto NewWidget = CreateWidget<UInventoryUserWidget>(GetOwningPlayer(), InUserWidgetClass);
-	NewWidget->ItemListPtr = ItemListPtr;
-	if (InIndex < 0)
+	if (const auto NewWidget = CreateWidget<UInventoryUserWidget>(GetOwningPlayer(), InUserWidgetClass))
 	{
-		NewWidget->Index = Index;
-	}
-	else
-	{
-		NewWidget->Index = InIndex;
-	}
+		NewWidget->InventoryContainer = InventoryContainer;
+		NewWidget->ItemListPtr = ItemListPtr;
+		if (InIndex < 0)
+		{
+			NewWidget->Index = Index;
+		}
+		else
+		{
+			NewWidget->Index = InIndex;
+		}
 	
-	return NewWidget;
+		return NewWidget;
+	}
+
+	return nullptr;
 }

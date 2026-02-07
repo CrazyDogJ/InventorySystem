@@ -3,8 +3,6 @@
 
 #include "InventoryItemDefinition.h"
 
-#include "UObject/ObjectSaveContext.h"
-
 FInstancedStruct UInventoryItemDefinition::FindFragmentByClass(const UScriptStruct* StructType,
                                                                bool& bValid) const
 {
@@ -27,33 +25,50 @@ FInstancedStruct UInventoryItemDefinition::FindFragmentByClass(const UScriptStru
 	return FInstancedStruct();
 }
 
-void UInventoryItemDefinition::RebuildLookup()
+#if WITH_EDITOR
+void UInventoryItemDefinition::RebuildLookup(const FPropertyChangedEvent& PropertyChangedEvent)
 {
-	// Update lookup pre save.
-	TypeLookup.Empty();
-	
-	for (int i = 0; i < DefaultFragments.Num(); i++)
+	if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(ThisClass, DefaultFragments))
 	{
-		if (DefaultFragments[i].IsValid())
+		// Update lookup pre save.
+		TypeLookup.Empty();
+	
+		for (int i = 0; i < DefaultFragments.Num(); i++)
 		{
-			auto Type = DefaultFragments[i].GetScriptStruct();
-			TypeLookup.Add(Type, i);
+			if (DefaultFragments[i].IsValid())
+			{
+				auto Type = DefaultFragments[i].GetScriptStruct();
+				TypeLookup.Add(Type, i);
+			}
 		}
 	}
 }
-#if WITH_EDITOR
+
+void UInventoryItemDefinition::RefreshLocalizationKey(const FPropertyChangedEvent& PropertyChangedEvent)
+{
+	const auto PropertyName = PropertyChangedEvent.GetPropertyName();
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ThisClass, ItemID) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(ThisClass, ItemDisplayName) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(ThisClass, ItemDisplayDescription))
+	{
+		if (!ItemID.IsEmpty())
+		{
+			ItemDisplayName =
+				FText::ChangeKey(TEXT("Inventory"), ItemID + "DisplayName", ItemDisplayName);
+			ItemDisplayDescription =
+				FText::ChangeKey(TEXT("Inventory"), ItemID + "DisplayDescription", ItemDisplayDescription);
+		}
+	}
+}
+
 void UInventoryItemDefinition::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	
 	Modify();
-	RebuildLookup();
+	RebuildLookup(PropertyChangedEvent);
+	RefreshLocalizationKey(PropertyChangedEvent);
+
+	PropertyChangedDelegate.Broadcast(PropertyChangedEvent);
 }
 #endif
-void UInventoryItemDefinition::PreSave(FObjectPreSaveContext SaveContext)
-{
-	Modify();
-	RebuildLookup();
-	
-	Super::PreSave(SaveContext);
-}

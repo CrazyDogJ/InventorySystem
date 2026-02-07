@@ -7,6 +7,7 @@
 #include "FastArraySerializers/InventoryListContainer.h"
 #include "InventoryUserWidget.generated.h"
 
+class UInventoryContainerComponent;
 /**
  * Used to display something about the inventory.
  */
@@ -21,6 +22,10 @@ protected:
 public:
 	// Pointer of the list.
 	FInventoryItemList* ItemListPtr = nullptr;
+
+	// Used for sending rpc events to server. :(
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, meta=(ExposeOnSpawn))
+	UInventoryContainerComponent* InventoryContainer = nullptr;
 
 	// Slot index of this widget.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta=(ExposeOnSpawn))

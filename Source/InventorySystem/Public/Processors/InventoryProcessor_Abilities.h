@@ -7,7 +7,6 @@
 #include "GameplayAbilitySpecHandle.h"
 #include "GameplayTagContainer.h"
 #include "InventoryUtility.h"
-#include "FastArraySerializers/InventoryListContainer.h"
 #include "UObject/Object.h"
 #include "InventoryProcessor_Abilities.generated.h"
 

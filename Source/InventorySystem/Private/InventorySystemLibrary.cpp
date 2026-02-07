@@ -3,6 +3,7 @@
 
 #include "InventorySystemLibrary.h"
 
+#include "InventoryContainerComponent.h"
 #include "InventoryItemDefinition.h"
 #include "InventoryItemInstance.h"
 #include "InventorySystemSettings.h"
@@ -110,12 +111,17 @@ void UInventorySystemLibrary::AssignItemChangeEvent(FInventoryItemList& ItemList
 
 UInventoryUserWidget* UInventorySystemLibrary::CreateInventoryUserWidget(
 	APlayerController* OwningController, TSubclassOf<UInventoryUserWidget> InUserWidgetClass,
-	FInventoryItemList& InItemList, int Index)
+	UInventoryContainerComponent* InItemListComp, const int Index)
 {
-	const auto NewWidget = CreateWidget<UInventoryUserWidget>(OwningController, InUserWidgetClass);
-	NewWidget->ItemListPtr = &InItemList;
-	NewWidget->Index = Index;
-	return NewWidget;
+	if (const auto NewWidget = CreateWidget<UInventoryUserWidget>(OwningController, InUserWidgetClass))
+	{
+		NewWidget->InventoryContainer = InItemListComp;
+		NewWidget->ItemListPtr = &InItemListComp->ItemList;
+		NewWidget->Index = Index;
+		return NewWidget;
+	}
+	
+	return nullptr;
 }
 
 TSubclassOf<UInventoryUserWidget> UInventorySystemLibrary::GetUserWidgetClassByInterface(

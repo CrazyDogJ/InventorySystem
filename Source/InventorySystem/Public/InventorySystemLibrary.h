@@ -67,7 +67,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|User Widget", meta=(DeterminesOutputType="InUserWidgetClass"))
 	static UInventoryUserWidget* CreateInventoryUserWidget(APlayerController* OwningController, TSubclassOf<UInventoryUserWidget> InUserWidgetClass,
-		UPARAM(ref)FInventoryItemList& InItemList, int Index);
+		UInventoryContainerComponent* InItemListComp, int Index);
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|User Widget")
 	static TSubclassOf<UInventoryUserWidget> GetUserWidgetClassByInterface(TSubclassOf<UInterface> InInterface);

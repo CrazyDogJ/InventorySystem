@@ -28,6 +28,15 @@ void AInventoryItemActor::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 void AInventoryItemActor::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
+
+#if WITH_EDITOR
+	// Check item instance is updated.
+	if (ItemDefinition)
+	{
+		CheckShouldRefresh();
+		ItemDefinition->PropertyChangedDelegate.AddUObject(this, &ThisClass::OnItemDefPropertyChanged);
+	}
+#endif
 	
 	OnRep_ItemInstance();
 }
@@ -36,6 +45,11 @@ void AInventoryItemActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Manually add replicated sub-object when begin play.
+	if (ItemInstance)
+	{
+		AddReplicatedSubObject(ItemInstance);
+	}
 	if (UStreamingLevelSaveLibrary::IsRuntimeObject(this))
 	{
 		AddComponentByClass(UStreamingLevelSaveComponent::StaticClass(), false, FTransform(), false);
@@ -71,6 +85,27 @@ void AInventoryItemActor::RefreshItemInstance()
 		MarkPackageDirty();
 	}
 }
+
+void AInventoryItemActor::CheckShouldRefresh()
+{
+	if (ItemInstance)
+	{
+		if (ItemDefinition->ItemInstance->GetClass() != ItemInstance->GetClass())
+		{
+			RefreshItemInstance();
+		}
+	}
+	else
+	{
+		RefreshItemInstance();
+	}
+}
+
+void AInventoryItemActor::OnItemDefPropertyChanged(const FPropertyChangedEvent& PropertyChangedEvent)
+{
+	CheckShouldRefresh();
+}
+
 #endif
 
 void AInventoryItemActor::NotifyItemActorPickedUp()

@@ -12,6 +12,10 @@
 class UInventoryItemProcessor;
 class UInventoryManageOperation;
 
+#if WITH_EDITOR
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnItemDefinitionPropertyChanged, const FPropertyChangedEvent& PropertyChangedEvent)
+#endif
+
 /**
  * Definition of the inventory item.
  */
@@ -63,13 +67,18 @@ public:
 	UPARAM(DisplayName = "Property")
 	FInstancedStruct FindFragmentByClass(const UScriptStruct* StructType, bool& bValid) const;
 
-protected:
-	void RebuildLookup();
+#if WITH_EDITORONLY_DATA
+	FOnItemDefinitionPropertyChanged PropertyChangedDelegate;
+#endif
 
+protected:
+	
 #if WITH_EDITOR
+	void RebuildLookup(const FPropertyChangedEvent& PropertyChangedEvent);
+	void RefreshLocalizationKey(const FPropertyChangedEvent& PropertyChangedEvent);
+	
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
-	virtual void PreSave(FObjectPreSaveContext SaveContext) override;
 
 	// Accelerate look up.
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, AdvancedDisplay, Category = "Storage Info")
