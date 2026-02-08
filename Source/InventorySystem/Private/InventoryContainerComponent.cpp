@@ -60,6 +60,30 @@ UInventoryItemInstance* UInventoryContainerComponent::GetItemInstance(int Index)
 	return nullptr;
 }
 
+void UInventoryContainerComponent::BeginModify()
+{
+#if WITH_EDITOR
+	if (GetOwner())
+	{
+		GetOwner()->Modify();
+	}
+	Modify();
+#endif
+}
+
+void UInventoryContainerComponent::DirtyPackage()
+{
+#if WITH_EDITOR
+	if (GetOwner())
+	{
+		// ReSharper disable once CppExpressionWithoutSideEffects
+		GetOwner()->MarkPackageDirty();
+	}
+	// ReSharper disable once CppExpressionWithoutSideEffects
+	MarkPackageDirty();
+#endif
+}
+
 FInventoryItemListSaveData UInventoryContainerComponent::GetContainerSaveData() const
 {
 	FInventoryItemListSaveData SaveData;

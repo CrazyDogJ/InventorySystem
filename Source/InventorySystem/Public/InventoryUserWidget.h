@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/UserWidgetPool.h"
 #include "FastArraySerializers/InventoryListContainer.h"
 #include "InventoryUserWidget.generated.h"
 
@@ -18,8 +19,13 @@ class INVENTORYSYSTEM_API UInventoryUserWidget : public UUserWidget
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+
+	UPROPERTY(Transient)
+	FUserWidgetPool WidgetPool;
 	
 public:
+	explicit UInventoryUserWidget(const FObjectInitializer& Initializer);
 	// Pointer of the list.
 	FInventoryItemList* ItemListPtr = nullptr;
 
@@ -27,9 +33,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, meta=(ExposeOnSpawn))
 	UInventoryContainerComponent* InventoryContainer = nullptr;
 
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, meta=(ExposeOnSpawn))
+	UInventoryItemInstance* OverrideItemInstance = nullptr;
+	
 	// Slot index of this widget.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta=(ExposeOnSpawn))
-	int Index;
+	int Index = -1;
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	bool bAssignAddEvent = false;
@@ -49,8 +58,11 @@ public:
 	UInventoryItemInstance* GetCurrentItemInstance() const;
 	
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|User Widget", meta=(DeterminesOutputType="InUserWidgetClass"))
-	UInventoryUserWidget* CreateChildUserWidget(TSubclassOf<UInventoryUserWidget> InUserWidgetClass, int InIndex = -1);
+	UInventoryUserWidget* CreateChildUserWidget(TSubclassOf<UInventoryUserWidget> InUserWidgetClass, int InIndex);
 
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|User Widget")
+	void ReleaseChildUserWidget(UInventoryUserWidget* InUserWidget);
+	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory System|User Widget")
 	void ListAddEvent(const TArray<int>& Indices);
 	

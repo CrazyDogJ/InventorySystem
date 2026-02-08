@@ -9,6 +9,7 @@
 #include "StreamingLevelSaveComponent.h"
 #include "StreamingLevelSaveLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "Processors/InventoryProcessor_Stackable.h"
 
 AInventoryItemActor::AInventoryItemActor()
 {
@@ -79,6 +80,11 @@ void AInventoryItemActor::RefreshItemInstance()
 		Modify();
 		
 		ItemInstance = UInventoryItemInstance::NewItemInstance(this, ItemDefinition);
+		// Auto set num is 1.
+		if (const auto Stackable = Cast<UItemInstance_Stackable>(ItemInstance))
+		{
+			Stackable->StackAmount = 1;
+		}
 		OnRep_ItemInstance();
 
 		// ReSharper disable once CppExpressionWithoutSideEffects

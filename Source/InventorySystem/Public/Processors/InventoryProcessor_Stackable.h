@@ -29,8 +29,8 @@ public:
 	virtual bool CanStack_Implementation(const UInventoryItemInstance* ItemInstance) const { return false; }
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	bool StackItemInstance(UInventoryItemInstance*& ItemInstance);
-	virtual bool StackItemInstance_Implementation(UInventoryItemInstance*& ItemInstance) { return false; }
+	bool StackItemInstance(UInventoryItemInstance*& ItemInstance, int Amount = -1);
+	virtual bool StackItemInstance_Implementation(UInventoryItemInstance*& ItemInstance, int Amount = -1) { return false; }
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
 	int RemoveStack(int InAmount);
@@ -58,7 +58,7 @@ protected:
 	// Stack item interface start ---
 	virtual int GetStackAmount_Implementation() const override { return StackAmount; }
 	virtual bool CanStack_Implementation(const UInventoryItemInstance* ItemInstance) const override;
-	virtual bool StackItemInstance_Implementation(UInventoryItemInstance*& ItemInstance) override;
+	virtual bool StackItemInstance_Implementation(UInventoryItemInstance*& ItemInstance, int Amount = -1) override;
 	virtual int RemoveStack_Implementation(int InAmount) override;
 	virtual int GetMaxStackAmount_Implementation() const override;
 	// Stack item interface end ---
@@ -113,6 +113,15 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
 	static bool QuickMoveItem(UPARAM(ref)FInventoryItemList& FromItemList, int FromIndex, UPARAM(ref)FInventoryItemList& ToItemList);
+
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
+	static bool CanSlotSplit(UPARAM(ref)FInventoryItemList& ItemList, int SlotIndex);
+	
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
+	static bool CanItemSplit(const UInventoryItemInstance* ItemInstance);
+	
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
+	static bool SplitItem(UPARAM(ref)FInventoryItemList& SplitItemList, int SplitIndex, int SplitAmount, UPARAM(ref)FInventoryItemList& ContainerToSplit);
 	
 	/**
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)

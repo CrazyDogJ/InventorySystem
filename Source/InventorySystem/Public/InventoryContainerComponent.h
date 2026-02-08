@@ -43,6 +43,14 @@ public:
 	
 	UFUNCTION(BlueprintPure, Category = "Inventory System|Container Component")
 	UInventoryItemInstance* GetItemInstance(int Index) const;
+
+	// Only for editor!!! Used to modify container in editor.
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Container Component")
+	void BeginModify();
+	
+	// Only for editor!!! Used to modify container in editor.
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Container Component")
+	void DirtyPackage();
 	
 	///////////////
 	// Save Load //

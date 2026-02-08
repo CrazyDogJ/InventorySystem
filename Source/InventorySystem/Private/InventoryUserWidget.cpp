@@ -3,6 +3,8 @@
 
 #include "InventoryUserWidget.h"
 
+#include "InventorySystem.h"
+
 void UInventoryUserWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -35,6 +37,18 @@ void UInventoryUserWidget::NativeDestruct()
 	ItemListPtr = nullptr;
 }
 
+void UInventoryUserWidget::ReleaseSlateResources(bool bReleaseChildren)
+{
+	WidgetPool.ReleaseAllSlateResources();
+	
+	Super::ReleaseSlateResources(bReleaseChildren);
+}
+
+UInventoryUserWidget::UInventoryUserWidget(const FObjectInitializer& Initializer)
+	: Super(Initializer), WidgetPool(*this)
+{
+}
+
 FInventoryItemList& UInventoryUserWidget::GetItemList() const
 {
 	return *ItemListPtr;
@@ -42,6 +56,12 @@ FInventoryItemList& UInventoryUserWidget::GetItemList() const
 
 UInventoryItemInstance* UInventoryUserWidget::GetCurrentItemInstance() const
 {
+	// Use override first.
+	if (OverrideItemInstance)
+	{
+		return OverrideItemInstance;
+	}
+	
 	if (ItemListPtr)
 	{
 		if (ItemListPtr->ItemList.IsValidIndex(Index))
@@ -55,21 +75,32 @@ UInventoryItemInstance* UInventoryUserWidget::GetCurrentItemInstance() const
 
 UInventoryUserWidget* UInventoryUserWidget::CreateChildUserWidget(TSubclassOf<UInventoryUserWidget> InUserWidgetClass, int InIndex)
 {
-	if (const auto NewWidget = CreateWidget<UInventoryUserWidget>(GetOwningPlayer(), InUserWidgetClass))
-	{
-		NewWidget->InventoryContainer = InventoryContainer;
-		NewWidget->ItemListPtr = ItemListPtr;
-		if (InIndex < 0)
+	const auto NewPoolWidget = WidgetPool.GetOrCreateInstance<UInventoryUserWidget>(InUserWidgetClass,
+		[this, InIndex] (UUserWidget* WidgetObject, const TSharedRef<SWidget>& Content)
 		{
-			NewWidget->Index = Index;
-		}
-		else
-		{
-			NewWidget->Index = InIndex;
-		}
-	
-		return NewWidget;
-	}
+			if (const auto NewWidget = Cast<UInventoryUserWidget>(WidgetObject))
+			{
+				NewWidget->InventoryContainer = InventoryContainer;
+				NewWidget->OverrideItemInstance = OverrideItemInstance;
+				NewWidget->ItemListPtr = ItemListPtr;
+				if (InIndex < 0)
+				{
+					NewWidget->Index = Index;
+				}
+				else
+				{
+					NewWidget->Index = InIndex;
+				}
+			}
+			
+			return SNew(SObjectWidget, WidgetObject)[Content];
+		});
 
-	return nullptr;
+	return NewPoolWidget;
+}
+
+void UInventoryUserWidget::ReleaseChildUserWidget(UInventoryUserWidget* InUserWidget)
+{
+	InUserWidget->RemoveFromParent();
+	WidgetPool.Release(InUserWidget);
 }
