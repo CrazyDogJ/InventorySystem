@@ -9,9 +9,6 @@
 #include "StructUtils/InstancedStruct.h"
 #include "InventoryItemDefinition.generated.h"
 
-class UInventoryItemProcessor;
-class UInventoryManageOperation;
-
 #if WITH_EDITOR
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnItemDefinitionPropertyChanged, const FPropertyChangedEvent& PropertyChangedEvent)
 #endif
@@ -40,10 +37,6 @@ public:
 	/** Determine what default properties the item has. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta=(ExcludeBaseStruct), Category = "Storage Info")
 	TArray<FInstancedStruct> DefaultFragments;
-
-	/** Item instance type. */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Instanced, Category = "Storage Info")
-	UInventoryItemInstance* ItemInstance;
 
 	/** Determine how the item actor represent in the game world. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta=(ExcludeBaseStruct), Category = "Storage Info")

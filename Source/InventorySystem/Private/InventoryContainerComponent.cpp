@@ -26,11 +26,28 @@ void UInventoryContainerComponent::GetLifetimeReplicatedProps(TArray<class FLife
 
 void UInventoryContainerComponent::BeginPlay()
 {
+	// Init item list.
 	ItemList.OuterObject = this;
-
-	if (UStreamingLevelSaveLibrary::IsRuntimeObject(GetOwner()))
+	if (bShouldInit)
 	{
-		GetOwner()->AddComponentByClass(UStreamingLevelSaveComponent::StaticClass(), false, FTransform(), false);
+		TArray<int32> AddIndices;
+		for (int i = 0; i < InitItemList.ItemList.Num(); ++i)
+		{
+			ItemList.ItemList.Add(InitItemList.ItemList[i]);
+			// Item instance.
+			if (const auto ItemInstance = ItemList.ItemList[i].ItemInstance)
+			{
+				ItemInstance->ChangeOuter(this);
+			}
+			AddIndices.Add(i);
+		}
+		ItemList.MarkIndexDirty(AddIndices);
+	}
+	
+	if (bAutoStreamingSave && UStreamingLevelSaveLibrary::IsRuntimeObject(GetOwner()) && GetOwner()->HasAuthority() && !StreamingLevelSaveComponent)
+	{
+		const auto NewComponent = GetOwner()->AddComponentByClass(UStreamingLevelSaveComponent::StaticClass(), false, FTransform(), false);
+		StreamingLevelSaveComponent = Cast<UStreamingLevelSaveComponent>(NewComponent);
 	}
 	
 	Super::BeginPlay();
@@ -38,7 +55,8 @@ void UInventoryContainerComponent::BeginPlay()
 
 FInstancedStruct UInventoryContainerComponent::GetSaveData_Implementation()
 {
-	const FInventoryItemListSaveData SaveData = GetContainerSaveData();
+	FInventoryItemListSaveData SaveData;
+	SaveData.SaveList(ItemList);
 	return FInstancedStruct::Make(SaveData);
 }
 
@@ -46,53 +64,7 @@ void UInventoryContainerComponent::LoadSaveData_Implementation(const FInstancedS
 {
 	if (const auto Ptr = SaveData.GetPtr<FInventoryItemListSaveData>())
 	{
-		LoadSaveData(*Ptr);
+		Ptr->LoadList(ItemList, this);
+		UE_LOG(LogInventorySystem, Log, TEXT("Loading save data for container : %s"), *GetName())
 	}
-}
-
-UInventoryItemInstance* UInventoryContainerComponent::GetItemInstance(int Index) const
-{
-	if (ItemList.ItemList.IsValidIndex(Index))
-	{
-		return ItemList.ItemList[Index].ItemInstance;
-	}
-
-	return nullptr;
-}
-
-void UInventoryContainerComponent::BeginModify()
-{
-#if WITH_EDITOR
-	if (GetOwner())
-	{
-		GetOwner()->Modify();
-	}
-	Modify();
-#endif
-}
-
-void UInventoryContainerComponent::DirtyPackage()
-{
-#if WITH_EDITOR
-	if (GetOwner())
-	{
-		// ReSharper disable once CppExpressionWithoutSideEffects
-		GetOwner()->MarkPackageDirty();
-	}
-	// ReSharper disable once CppExpressionWithoutSideEffects
-	MarkPackageDirty();
-#endif
-}
-
-FInventoryItemListSaveData UInventoryContainerComponent::GetContainerSaveData() const
-{
-	FInventoryItemListSaveData SaveData;
-	SaveData.SaveList(ItemList);
-	return SaveData;
-}
-
-void UInventoryContainerComponent::LoadSaveData(const FInventoryItemListSaveData& InSaveData)
-{
-	InSaveData.LoadList(ItemList, this);
-	UE_LOG(LogInventorySystem, Log, TEXT("Loading save data for container : %s"), *GetName())
 }

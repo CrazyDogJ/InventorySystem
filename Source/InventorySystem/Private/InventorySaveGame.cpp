@@ -11,22 +11,29 @@ void FInventoryItemEntrySaveData::SaveEntry(const FInventoryItemEntry& InItemEnt
 {
 	if (!InItemEntry.IsSlotEmpty())
 	{
-		ItemDefinition = TSoftObjectPtr<UInventoryItemDefinition>(InItemEntry.ItemInstance->ItemDefinition);
-		InItemEntry.ItemInstance->GetSaveData(ItemInstanceData);
+		ItemDefinition = TSoftObjectPtr<UInventoryItemDefinition>(InItemEntry.ItemDefinition);
+		ItemStack = InItemEntry.ItemStack;
+		if (InItemEntry.ItemInstance)
+		{
+			InItemEntry.ItemInstance->GetSaveData(ItemInstanceData);
+		}
 	}
 }
 
 void FInventoryItemEntrySaveData::LoadEntry(FInventoryItemEntry& InItemEntry, UObject* OuterObject) const
 {
-	if (ItemInstanceData.IsEmpty()) return;
-	
 	if (!InItemEntry.IsSlotEmpty())
 	{
 		InItemEntry.EmptySlot();
 	}
 
-	InItemEntry.ItemInstance = UInventoryItemInstance::NewItemInstance(OuterObject, ItemDefinition.LoadSynchronous());
-	InItemEntry.ItemInstance->LoadSaveData(ItemInstanceData);
+	InItemEntry.ItemDefinition = ItemDefinition.LoadSynchronous();
+	InItemEntry.ItemStack = ItemStack;
+	if (!ItemInstanceData.IsEmpty())
+	{
+		InItemEntry.ItemInstance = UInventoryItemInstance::NewItemInstance(OuterObject, InItemEntry.ItemDefinition);
+		InItemEntry.ItemInstance->LoadSaveData(ItemInstanceData);
+	}
 }
 
 void FInventoryItemListSaveData::SaveList(const FInventoryItemList& InItemList)

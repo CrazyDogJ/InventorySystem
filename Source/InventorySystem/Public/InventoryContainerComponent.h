@@ -8,6 +8,7 @@
 #include "FastArraySerializers/InventoryListContainer.h"
 #include "InventoryContainerComponent.generated.h"
 
+class UStreamingLevelSaveComponent;
 class AInventoryInfoActor;
 struct FInventoryItemListSaveData;
 
@@ -32,30 +33,23 @@ protected:
 	virtual FInstancedStruct GetSaveData_Implementation() override;
 	virtual void LoadSaveData_Implementation(const FInstancedStruct& SaveData) override;
 	// Streaming Level Save Interface End --------------------
+	
 public:
 	UInventoryContainerComponent();
 	
 	/** Init item list, usually used for specific item container game design. */
-	UPROPERTY(BlueprintReadWrite, Replicated, EditAnywhere, Category = "Inventory System|Container Component")
+	UPROPERTY(BlueprintReadWrite, Replicated, VisibleAnywhere, Transient, Category = "Inventory System|Container Component")
 	FInventoryItemList ItemList;
-	
-public:
-	
-	UFUNCTION(BlueprintPure, Category = "Inventory System|Container Component")
-	UInventoryItemInstance* GetItemInstance(int Index) const;
 
-	// Only for editor!!! Used to modify container in editor.
-	UFUNCTION(BlueprintCallable, Category = "Inventory System|Container Component")
-	void BeginModify();
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Inventory System|Container Component")
+	bool bShouldInit;
 	
-	// Only for editor!!! Used to modify container in editor.
-	UFUNCTION(BlueprintCallable, Category = "Inventory System|Container Component")
-	void DirtyPackage();
-	
-	///////////////
-	// Save Load //
-	///////////////
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Inventory System|Container Component", meta = (EditCondition = "bShouldInit"))
+	FInventoryItemList InitItemList;
 
-	FInventoryItemListSaveData GetContainerSaveData() const;
-	void LoadSaveData(UPARAM(ref)const FInventoryItemListSaveData& InSaveData);
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Inventory System|Container Component")
+	bool bAutoStreamingSave = false;
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory System|Container Component")
+	UStreamingLevelSaveComponent* StreamingLevelSaveComponent;
 };

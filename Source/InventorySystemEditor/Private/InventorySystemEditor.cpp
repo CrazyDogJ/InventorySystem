@@ -1,8 +1,11 @@
 ﻿#include "InventorySystemEditor.h"
 
+#include "InventoryItemDefinition.h"
 #include "InventorySystemSettings.h"
 #include "ISettingsModule.h"
+#include "ItemDefThumbnailRenderer.h"
 #include "ItemEntryPropertyTypeCustomization.h"
+#include "ThumbnailRendering/ThumbnailManager.h"
 
 #define LOCTEXT_NAMESPACE "FInventorySystemEditorModule"
 
@@ -21,6 +24,12 @@ void FInventorySystemEditorModule::StartupModule()
 		FInventoryItemEntry::StaticStruct()->GetFName(),
 		FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FItemEntryPropertyTypeCustomization::MakeInstance)
 	);
+
+	if (GIsEditor)
+	{
+		UThumbnailManager::Get().RegisterCustomRenderer(UInventoryItemDefinition::StaticClass(),
+			UItemDefThumbnailRenderer::StaticClass());
+	}
 }
 
 void FInventorySystemEditorModule::ShutdownModule()

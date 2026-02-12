@@ -86,16 +86,28 @@ class INVENTORYSYSTEM_API UItemProcessor_Stackable : public UBlueprintFunctionLi
 public:
 
 	static bool IsStackableItem(const UInventoryItemInstance* ItemInstance);
-	
-	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
-	static int FindFirstStackableSlot(const FInventoryItemList& ItemList, UInventoryItemInstance* ItemInstance);
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
 	static int GetDefaultMaxStackAmount(UInventoryItemDefinition* ItemDef);
 	
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
+	static int GetEntryStackAmount(const FInventoryItemEntry& ItemEntry);
+
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
+	static int GetEntryMaxStackAmount(const FInventoryItemEntry& ItemEntry);
+	
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
+	static bool CanEntryStack(const FInventoryItemEntry& InItemEntry, const FInventoryItemEntry& OtherItemEntry);
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
+	static int FindFirstStackableSlot(const FInventoryItemList& ItemList, const FInventoryItemEntry& ItemEntry);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
+	static bool StackItemEntry(UPARAM(ref)FInventoryItemEntry& ItemEntry, UPARAM(ref)FInventoryItemEntry& InItemEntry, int Amount = -1);
+	
 	// Remember to mark index dirty after calling it if item instance come from item list.
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
-	static bool AddItem(UPARAM(ref)FInventoryItemList& ItemList, UPARAM(ref)UInventoryItemInstance*& ItemInstance);
+	static bool AddItem(UPARAM(ref)FInventoryItemList& ItemList, UPARAM(ref)FInventoryItemEntry& ItemEntry);
 	
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
 	static bool PickupItemActor(UPARAM(ref)FInventoryItemList& ItemList, AInventoryItemActor* ItemActor);
@@ -116,9 +128,6 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
 	static bool CanSlotSplit(UPARAM(ref)FInventoryItemList& ItemList, int SlotIndex);
-	
-	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
-	static bool CanItemSplit(const UInventoryItemInstance* ItemInstance);
 	
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
 	static bool SplitItem(UPARAM(ref)FInventoryItemList& SplitItemList, int SplitIndex, int SplitAmount, UPARAM(ref)FInventoryItemList& ContainerToSplit);

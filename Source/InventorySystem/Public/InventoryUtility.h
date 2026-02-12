@@ -19,10 +19,9 @@ USTRUCT(BlueprintType)
 struct FItemActorDescBase
 {
 	GENERATED_BODY()
-	
+public:
 	virtual ~FItemActorDescBase() = default;
 	
-	virtual bool IsDataValid() { return false; }
-	virtual TSubclassOf<AInventoryItemActor> GetItemActorClass();
-	virtual void SetupActor(AInventoryItemActor* InItemActor) {}
+	virtual bool IsDataValid() const { return false; }
+	virtual TSubclassOf<AInventoryItemActor> GetItemActorClass() const;
 };

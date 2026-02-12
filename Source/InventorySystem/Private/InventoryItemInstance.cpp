@@ -81,14 +81,19 @@ class UWorld* UInventoryItemInstance::GetWorld() const
 UInventoryItemInstance* UInventoryItemInstance::NewItemInstance(UObject* Outer, UInventoryItemDefinition* InItemDefinition)
 {
 	if (!InItemDefinition || !Outer) return nullptr;
+
+	UInventoryItemInstance* TemplateInstance = nullptr;
+	if (const auto Frag = InItemDefinition->GetFragmentPtr<FItemFragment_ItemInstance>())
+	{
+		TemplateInstance = Frag->ItemInstance;
+	}
 	
-	auto TemplateInstance = InItemDefinition->ItemInstance;
 	// If item def not implement item instance class, use default class.
 	if (!TemplateInstance)
 	{
-		TemplateInstance = NewObject<UInventoryItemInstance>(Outer, StaticClass());
 		UE_LOG(LogInventorySystem, Display, TEXT("InventoryItemInstance::NewItemInstance : Item Instance in %s is not valid!"),
 			*InItemDefinition->GetName());
+		return nullptr;
 	}
 	
 	const auto NewItemInstance = NewObject<UInventoryItemInstance>(Outer, TemplateInstance->GetClass(), NAME_None, RF_NoFlags, TemplateInstance);
@@ -151,7 +156,7 @@ bool UInventoryItemInstance::IsTickable() const
 		return false;
 	}
 	
-	if (IsUnreachable())
+	if (!GetOuter())
 	{
 		return false;
 	}

@@ -3,12 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "InventorySaveGame.h"
 #include "StreamingLevelSaveInterface.h"
+#include "FastArraySerializers/InventoryListContainer.h"
 #include "GameFramework/Actor.h"
 #include "InventoryItemActor.generated.h"
 
-struct FInventoryItemActorSaveData;
+class UStreamingLevelSaveComponent;
 class UInventoryItemDefinition;
 
 UCLASS()
@@ -21,6 +21,7 @@ protected:
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// Streaming Level Save Interface Start --------------------
 	virtual FInstancedStruct GetSaveData_Implementation() override;
@@ -29,13 +30,11 @@ protected:
 public:
 	AInventoryItemActor();
 	
-#if WITH_EDITORONLY_DATA
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Inventory System|Item Actor")
-	UInventoryItemDefinition* ItemDefinition = nullptr;
-#endif
-	
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Instanced, ReplicatedUsing = OnRep_ItemInstance, Category = "Inventory System|Item Actor")
-	UInventoryItemInstance* ItemInstance;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, ReplicatedUsing = OnRep_ItemEntry, Category = "Inventory System|Item Actor")
+	FInventoryItemEntry ItemEntry;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	UStreamingLevelSaveComponent* LevelSaveComponent;
 	
 public:
 #if WITH_EDITOR
@@ -49,16 +48,14 @@ public:
 	void NotifyItemActorPickedUp();
 
 	void TransToRuntimeActor();
-	
-	void GetSaveData(FInventoryItemEntrySaveData& OutSaveData) const;
-	void LoadSaveData(const FInventoryItemEntrySaveData& InSaveData);
 
 protected:
 	UFUNCTION()
-	void OnRep_ItemInstance();
+	virtual void OnRep_ItemEntry();
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory System|Item Actor")
 	void OnItemActorPickedUp();
-	
+
+	virtual void PostTransRuntime() {}
 	virtual void NativeOnItemActorPickedUp() { Destroy(); }
 };

@@ -6,15 +6,15 @@
 FInstancedStruct UInventoryItemDefinition::FindFragmentByClass(const UScriptStruct* StructType,
                                                                bool& bValid) const
 {
-	FInstancedStruct emptystruct;
-	FInstancedStruct dummy;
-	emptystruct.InitializeAs(StructType);
+	FInstancedStruct EmptyStruct;
+	EmptyStruct.InitializeAs(StructType);
 
 	if (const auto Found = TypeLookup.Find(StructType))
 	{
-		dummy.InitializeAs(DefaultFragments[*Found].GetScriptStruct());
+		FInstancedStruct Dummy;
+		Dummy.InitializeAs(DefaultFragments[*Found].GetScriptStruct());
 
-		if (dummy.Identical(&emptystruct, 0))
+		if (Dummy.Identical(&EmptyStruct, 0))
 		{
 			bValid = true;
 			return DefaultFragments[*Found];

@@ -67,3 +67,12 @@ protected:
 	virtual int32 GetFunctionCallspace(UFunction* Function, FFrame* Stack) override;
 	virtual bool CallRemoteFunction(UFunction* Function, void* Parms, struct FOutParmRec* OutParms, FFrame* Stack) override;
 };
+
+USTRUCT(BlueprintType)
+struct INVENTORYSYSTEM_API FItemFragment_ItemInstance
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Instanced)
+	UInventoryItemInstance* ItemInstance;
+};

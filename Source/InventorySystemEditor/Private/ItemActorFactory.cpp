@@ -54,8 +54,8 @@ AActor* UItemActorFactory::SpawnActor(UObject* InAsset, ULevel* InLevel, const F
 	
 	// Item Actor Setup
 	const auto NewItemActor = Cast<AInventoryItemActor>(NewActor);
-	NewItemActor->ItemDefinition = ItemDefAsset;
-	NewItemActor->RefreshItemInstance();
+	NewItemActor->ItemEntry.ItemDefinition = ItemDefAsset;
+	NewItemActor->ItemEntry.ItemStack = 1;
 	
 	return NewActor;
 }

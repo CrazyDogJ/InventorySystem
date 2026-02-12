@@ -4,7 +4,7 @@
 
 #include "InventoryItemActor.h"
 
-TSubclassOf<AInventoryItemActor> FItemActorDescBase::GetItemActorClass()
+TSubclassOf<AInventoryItemActor> FItemActorDescBase::GetItemActorClass() const
 {
 	return AInventoryItemActor::StaticClass();
 }

@@ -9,9 +9,7 @@
 #include "InventorySystemSettings.h"
 #include "InventoryUserWidget.h"
 #include "Blueprint/UserWidget.h"
-#include "WorldPartition/WorldPartition.h"
-#include "WorldPartition/WorldPartitionRuntimeCell.h"
-#include "WorldPartition/WorldPartitionRuntimeHash.h"
+#include "InventoryItemActor.h"
 
 const UScriptStruct* UInventorySystemLibrary::GetInstancedStructType(const FInstancedStruct InstancedStruct)
 {
@@ -22,11 +20,6 @@ UInventoryItemInstance* UInventorySystemLibrary::NewItemInstance(UObject* Outer,
 	UInventoryItemDefinition* ItemDefinition)
 {
 	return UInventoryItemInstance::NewItemInstance(Outer, ItemDefinition);
-}
-
-FInventoryItemEntry UInventorySystemLibrary::NewItemInstanceEntry(UObject* Outer, UInventoryItemDefinition* ItemDefinition)
-{
-	return FInventoryItemEntry(Outer, ItemDefinition);
 }
 
 int UInventorySystemLibrary::FindInstanceStructByType(TArray<FInstancedStruct> InstanceStructs,
@@ -66,6 +59,11 @@ UInventoryItemInstance* UInventorySystemLibrary::GetItemInstance(FInventoryItemL
 	}
 
 	return nullptr;
+}
+
+bool UInventorySystemLibrary::IsItemEntryEmpty(const FInventoryItemEntry& ItemEntry)
+{
+	return ItemEntry.IsSlotEmpty();
 }
 
 bool UInventorySystemLibrary::IsSlotEmpty(FInventoryItemList& ItemList, int Index)
@@ -113,11 +111,14 @@ UInventoryUserWidget* UInventorySystemLibrary::CreateInventoryUserWidget(
 	APlayerController* OwningController, TSubclassOf<UInventoryUserWidget> InUserWidgetClass,
 	UInventoryContainerComponent* InItemListComp, const int Index)
 {
-	if (const auto NewWidget = CreateWidget<UInventoryUserWidget>(OwningController, InUserWidgetClass))
+	if (!InItemListComp || !InUserWidgetClass || !OwningController)
 	{
-		NewWidget->InventoryContainer = InItemListComp;
-		NewWidget->ItemListPtr = &InItemListComp->ItemList;
-		NewWidget->Index = Index;
+		return nullptr;
+	}
+	
+	if (const auto NewWidget = CreateWidget<UInventoryUserWidget, APlayerController*>(OwningController, InUserWidgetClass))
+	{
+		NewWidget->InitParams(InItemListComp, Index);
 		return NewWidget;
 	}
 	
@@ -155,6 +156,30 @@ TArray<TSubclassOf<UInventoryUserWidget>> UInventorySystemLibrary::GetUserWidget
 	return Out;
 }
 
+AInventoryItemActor* UInventorySystemLibrary::DropItemActor(const UObject* WorldContextObject,
+	const FTransform& ActorTransform, const FInventoryItemEntry& ItemEntry)
+{
+	if (!WorldContextObject) return nullptr;
+	if (ItemEntry.IsSlotEmpty()) return nullptr;
+	if (!ItemEntry.ItemDefinition->ItemActorDesc.IsValid()) return nullptr;
+	const auto Ptr = ItemEntry.ItemDefinition->ItemActorDesc.GetPtr<>();
+	const auto ActorClass = Ptr->GetItemActorClass();
+
+	const auto World = WorldContextObject->GetWorld();
+	if (!World) return nullptr;
+
+	const auto NewItemActor = World->SpawnActorDeferred<AInventoryItemActor>(ActorClass, ActorTransform);
+	NewItemActor->ItemEntry = ItemEntry;
+	if (const auto Instance = NewItemActor->ItemEntry.ItemInstance)
+	{
+		Instance->ChangeOuter(NewItemActor);
+	}
+	NewItemActor->FinishSpawning(ActorTransform);
+	
+	return NewItemActor;
+}
+
+/**
 FString UInventorySystemLibrary::GetAssociatedLevelName(const AActor* Actor)
 {
 	if (!Actor) return FString();
@@ -211,3 +236,4 @@ void UInventorySystemLibrary::GetCurrentOverlappedCell(const UObject* WorldConte
 
 	World->GetWorldPartition()->RuntimeHash->ForEachStreamingCells(ForEachCellFunction);
 }
+*/

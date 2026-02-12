@@ -9,9 +9,7 @@
 #include "UObject/Object.h"
 #include "InventoryListContainer.generated.h"
 
-struct FInventoryItemList;
 class UInventoryItemDefinition;
-class UInventoryItemInstance;
 
 /** Item list entry. Will be common used in most situation. */
 USTRUCT(BlueprintType)
@@ -20,10 +18,15 @@ struct INVENTORYSYSTEM_API FInventoryItemEntry : public FFastArraySerializerItem
 	GENERATED_BODY()
 
 	FInventoryItemEntry() {}
-	explicit FInventoryItemEntry(UObject* Outer, UInventoryItemDefinition* ItemDefinition);
+	FInventoryItemEntry(UInventoryItemDefinition* InItemDefinition);
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UInventoryItemDefinition* ItemDefinition = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int ItemStack = 0;
 	
-	// Item instance of this slot.
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Instanced)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UInventoryItemInstance* ItemInstance = nullptr;
 	
 	bool IsSlotEmpty() const;
@@ -60,7 +63,7 @@ struct INVENTORYSYSTEM_API FInventoryItemList : public FFastArraySerializer
 	FOnFastArraySerializerEvent OnItemListChange;
 	
 	// Replication
-	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms);
+	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParams);
 };
 
 template<> struct TStructOpsTypeTraits<FInventoryItemList> : public TStructOpsTypeTraitsBase2<FInventoryItemList>

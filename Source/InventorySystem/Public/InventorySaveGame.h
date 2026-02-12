@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "StructUtils/InstancedStruct.h"
 #include "InventorySaveGame.generated.h"
 
 class AInventoryItemActor;
@@ -22,6 +23,9 @@ struct FInventoryItemEntrySaveData
 
 	UPROPERTY(SaveGame)
 	TSoftObjectPtr<UInventoryItemDefinition> ItemDefinition;
+
+	UPROPERTY(SaveGame)
+	int ItemStack;
 	
 	UPROPERTY(SaveGame)
 	TArray<uint8> ItemInstanceData;

@@ -29,9 +29,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Inventory System|Inventory Manage", BlueprintAuthorityOnly)
 	static UInventoryItemInstance* NewItemInstance(UObject* Outer, UInventoryItemDefinition* ItemDefinition);
-	
-	UFUNCTION(BlueprintCallable, Category="Inventory System|Inventory Manage", BlueprintAuthorityOnly)
-	static FInventoryItemEntry NewItemInstanceEntry(UObject* Outer, UInventoryItemDefinition* ItemDefinition);
 
 	// Mark item at index dirty after you change data in a slot.
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Inventory Manage")
@@ -47,10 +44,13 @@ public:
 	static void EmptySlots(UPARAM(ref)FInventoryItemList& ItemList, TArray<int32> Indices);
 	
 	/** Will return nullptr if slot has no item instance. */
-	UFUNCTION(BlueprintCallable, Category = "Inventory System|Inventory Manage")
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Inventory Manage")
 	static UInventoryItemInstance* GetItemInstance(UPARAM(ref)FInventoryItemList& ItemList, int Index);
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory System|Inventory Manage")
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Inventory Manage")
+	static bool IsItemEntryEmpty(const FInventoryItemEntry& ItemEntry);
+	
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Inventory Manage")
 	static bool IsSlotEmpty(UPARAM(ref)FInventoryItemList& ItemList, int Index);
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Inventory Manage")
@@ -75,8 +75,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|User Widget")
 	static TArray<TSubclassOf<UInventoryUserWidget>> GetUserWidgetsByItemInstance(UInventoryItemInstance* InItemInstance);
 
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Inventory Manage", meta=(WorldContext = "WorldContextObject"))
+	static AInventoryItemActor* DropItemActor(const UObject* WorldContextObject, const FTransform& ActorTransform, const FInventoryItemEntry& ItemEntry);
+	
+/**
 	UFUNCTION(BlueprintPure, Category = "Inventory System|Container Component")
 	static FString GetAssociatedLevelName(const AActor* Actor);
 	
 	static void GetCurrentOverlappedCell(const UObject* WorldContextObject, const FVector& Location, const UWorldPartitionRuntimeCell*& CurrentOverlappedCell);
+*/
 };

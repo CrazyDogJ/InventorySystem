@@ -108,19 +108,59 @@ bool UItemProcessor_Stackable::IsStackableItem(const UInventoryItemInstance* Ite
 	return false;
 }
 
-int UItemProcessor_Stackable::FindFirstStackableSlot(const FInventoryItemList& ItemList, UInventoryItemInstance* ItemInstance)
+int UItemProcessor_Stackable::GetEntryStackAmount(const FInventoryItemEntry& ItemEntry)
+{
+	// Interface
+	if (IsStackableItem(ItemEntry.ItemInstance))
+	{
+		return IStackableItem::Execute_GetStackAmount(ItemEntry.ItemInstance);
+	}
+	// Default
+	return ItemEntry.ItemStack;
+}
+
+int UItemProcessor_Stackable::GetEntryMaxStackAmount(const FInventoryItemEntry& ItemEntry)
+{
+	// Interface
+	if (IsStackableItem(ItemEntry.ItemInstance))
+	{
+		return IStackableItem::Execute_GetMaxStackAmount(ItemEntry.ItemInstance);
+	}
+	// Default
+	return GetDefaultMaxStackAmount(ItemEntry.ItemDefinition);
+}
+
+bool UItemProcessor_Stackable::CanEntryStack(const FInventoryItemEntry& InItemEntry,
+                                             const FInventoryItemEntry& OtherItemEntry)
+{
+	// Validate
+	if (InItemEntry.IsSlotEmpty() || OtherItemEntry.IsSlotEmpty())
+	{
+		return false;
+	}
+	if (InItemEntry.ItemDefinition != OtherItemEntry.ItemDefinition)
+	{
+		return false;
+	}
+	// Interface
+	if (IsStackableItem(InItemEntry.ItemInstance))
+	{
+		return IStackableItem::Execute_CanStack(InItemEntry.ItemInstance, OtherItemEntry.ItemInstance);
+	}
+	// Default
+	const auto DefaultMaxStack = GetDefaultMaxStackAmount(InItemEntry.ItemDefinition);
+	const auto ToMax = DefaultMaxStack - InItemEntry.ItemStack;
+	return ToMax >= 1;
+}
+
+int UItemProcessor_Stackable::FindFirstStackableSlot(const FInventoryItemList& ItemList, const FInventoryItemEntry& ItemEntry)
 {
 	for (int i = 0; i < ItemList.ItemList.Num(); ++i)
 	{
-		const auto Instance = ItemList.ItemList[i].ItemInstance;
-		if (!Instance) continue;
-
-		if (IsStackableItem(Instance))
+		const auto ItrEntry = ItemList.ItemList[i];
+		if (CanEntryStack(ItrEntry, ItemEntry))
 		{
-			if (IStackableItem::Execute_CanStack(Instance, ItemInstance))
-			{
-				return i;
-			}
+			return i;
 		}
 	}
 	
@@ -141,51 +181,95 @@ int UItemProcessor_Stackable::GetDefaultMaxStackAmount(UInventoryItemDefinition*
 	return 1;
 }
 
-bool UItemProcessor_Stackable::AddItem(FInventoryItemList& ItemList, UInventoryItemInstance*& InItemInstance)
+bool UItemProcessor_Stackable::StackItemEntry(FInventoryItemEntry& ItemEntry, FInventoryItemEntry& InItemEntry, int Amount)
+{
+	if (IsStackableItem(ItemEntry.ItemInstance))
+	{
+		return IStackableItem::Execute_StackItemInstance(ItemEntry.ItemInstance, InItemEntry.ItemInstance, Amount);
+	}
+
+	const auto MaxStackAmount = GetDefaultMaxStackAmount(ItemEntry.ItemDefinition);
+	const auto InItemStackAmount = InItemEntry.ItemStack;
+	const auto CachedStackAmount = ItemEntry.ItemStack;
+	// Custom stack in amount.
+	if (Amount > 0)
+	{
+		ItemEntry.ItemStack = FMath::Clamp(ItemEntry.ItemStack + Amount, 1, MaxStackAmount);
+	}
+	else if (Amount < 0)
+	{
+		ItemEntry.ItemStack = FMath::Clamp(ItemEntry.ItemStack + InItemStackAmount, 1, MaxStackAmount);
+	}
+	const auto Delta = ItemEntry.ItemStack - CachedStackAmount;
+	if (InItemEntry.ItemStack - Delta <= 0)
+	{
+		InItemEntry.EmptySlot();
+		return true;
+	}
+
+	InItemEntry.ItemStack -= Delta;
+	return false;
+}
+
+bool UItemProcessor_Stackable::AddItem(FInventoryItemList& ItemList, FInventoryItemEntry& ItemEntry)
 {
 	TArray<int32> DirtyIndices;
-	if (!InItemInstance) return false;
-	const auto InStackableItemAmount = IsStackableItem(InItemInstance) ?
-		IStackableItem::Execute_GetStackAmount(InItemInstance) : 1;
+	if (ItemEntry.IsSlotEmpty()) return false;
 
 	// 1. Stack
-	int StackIndex = FindFirstStackableSlot(ItemList, InItemInstance);
+	int StackIndex = FindFirstStackableSlot(ItemList, ItemEntry);
 	while (StackIndex >= 0)
 	{
-		UInventoryItemInstance* StackableItemInstance = ItemList.ItemList[StackIndex].ItemInstance;
-		if (IStackableItem::Execute_StackItemInstance(StackableItemInstance, InItemInstance, -1))
+		const auto StackResult = StackItemEntry(ItemList.ItemList[StackIndex], ItemEntry);
+		ItemList.MarkIndexDirty({StackIndex});
+		if (StackResult)
 		{
 			return true;
 		}
 
 		// Find stack again.
-		StackIndex = FindFirstStackableSlot(ItemList, InItemInstance);
+		StackIndex = FindFirstStackableSlot(ItemList, ItemEntry);
 	}
 
 	// 2. Empty
 	int EmptyIndex = UInventorySystemLibrary::FindFirstEmptySlot(ItemList);
 	while (EmptyIndex >= 0)
 	{
-		const auto AmountToMax = IsStackableItem(InItemInstance) ?
-		IStackableItem::Execute_GetMaxStackAmount(InItemInstance) : 1;
+		const auto AmountToMax = GetEntryMaxStackAmount(ItemEntry);
 
 		// End
-		if (AmountToMax >= InStackableItemAmount)
+		if (AmountToMax >= GetEntryStackAmount(ItemEntry))
 		{
-			ItemList.ItemList[EmptyIndex].ItemInstance = InItemInstance;
-			InItemInstance->ChangeOuter(ItemList.OuterObject);
+			ItemList.ItemList[EmptyIndex] = ItemEntry;
+			if (ItemEntry.ItemInstance)
+			{
+				ItemEntry.ItemInstance->ChangeOuter(ItemList.OuterObject);
+			}
 			DirtyIndices.Add(EmptyIndex);
 			ItemList.MarkIndexDirty(DirtyIndices);
-			InItemInstance = nullptr;
+			ItemEntry = FInventoryItemEntry();
 			return true;
 		}
 
 		// Loop
-		ItemList.ItemList[EmptyIndex].ItemInstance = UInventoryItemInstance::NewItemInstance(ItemList.OuterObject, InItemInstance->ItemDefinition);
-		auto NewInstance = ItemList.ItemList[EmptyIndex].ItemInstance;
-		if (IsStackableItem(NewInstance))
+		ItemList.ItemList[EmptyIndex].ItemDefinition = ItemEntry.ItemDefinition;
+		if (const auto NewInstance = UInventoryItemInstance::NewItemInstance(ItemList.OuterObject, ItemEntry.ItemDefinition))
 		{
-			IStackableItem::Execute_StackItemInstance(NewInstance, InItemInstance, -1);
+			ItemList.ItemList[EmptyIndex].ItemInstance = NewInstance;
+			if (IsStackableItem(NewInstance))
+			{
+				IStackableItem::Execute_StackItemInstance(NewInstance, ItemEntry.ItemInstance, -1);
+			}
+			else
+			{
+				ItemList.ItemList[EmptyIndex].ItemStack = AmountToMax;
+				ItemEntry.ItemStack -= AmountToMax;
+			}
+		}
+		else
+		{
+			ItemList.ItemList[EmptyIndex].ItemStack = AmountToMax;
+			ItemEntry.ItemStack -= AmountToMax;
 		}
 		
 		// Instance
@@ -203,7 +287,7 @@ bool UItemProcessor_Stackable::PickupItemActor(FInventoryItemList& ItemList, AIn
 {
 	if (ItemActor != nullptr)
 	{
-		if (AddItem(ItemList, ItemActor->ItemInstance))
+		if (AddItem(ItemList, ItemActor->ItemEntry))
 		{
 			ItemActor->NotifyItemActorPickedUp();
 		}
@@ -225,8 +309,7 @@ int UItemProcessor_Stackable::GetItemTotalAmountByDefinition(const FInventoryIte
 	{
 		if (!Itr.IsSlotEmpty() && Itr.ItemInstance->ItemDefinition == ItemDef)
 		{
-			Result += IsStackableItem(Itr.ItemInstance) ?
-				IStackableItem::Execute_GetStackAmount(Itr.ItemInstance) : 1;
+			Result += GetEntryStackAmount(Itr);
 		}
 	}
 	
@@ -250,22 +333,22 @@ int UItemProcessor_Stackable::RemoveItemByDefinition(FInventoryItemList& ItemLis
 	TArray<int> DirtyIndex;
 	for (int i = ItemList.ItemList.Num() - 1; i >= 0; --i)
 	{
-		const auto Instance = ItemList.ItemList[i].ItemInstance;
-		if (!ItemList.ItemList[i].IsSlotEmpty() && Instance->ItemDefinition == ItemDef && LocalAmount > 0)
+		if (!ItemList.ItemList[i].IsSlotEmpty() && ItemList.ItemList[i].ItemDefinition == ItemDef && LocalAmount > 0)
 		{
-			const auto InstanceStackAmount = IsStackableItem(Instance) ?
-				IStackableItem::Execute_GetStackAmount(Instance) : 1;
-			
-			if (InstanceStackAmount > LocalAmount)
+			if (GetEntryStackAmount(ItemList.ItemList[i]) > LocalAmount)
 			{
-				if (IsStackableItem(Instance))
+				if (IsStackableItem(ItemList.ItemList[i].ItemInstance))
 				{
-					IStackableItem::Execute_RemoveStack(Instance, LocalAmount);
+					IStackableItem::Execute_RemoveStack(ItemList.ItemList[i].ItemInstance, LocalAmount);
+				}
+				else
+				{
+					ItemList.ItemList[i].ItemStack -= LocalAmount;
 				}
 				break;
 			}
 			
-			if (InstanceStackAmount == LocalAmount)
+			if (GetEntryStackAmount(ItemList.ItemList[i]) == LocalAmount)
 			{
 				EmptyIndex.Add(i);
 				DirtyIndex.Add(i);
@@ -274,7 +357,7 @@ int UItemProcessor_Stackable::RemoveItemByDefinition(FInventoryItemList& ItemLis
 			
 			EmptyIndex.Add(i);
 			DirtyIndex.Add(i);
-			LocalAmount -= InstanceStackAmount;
+			LocalAmount -= GetEntryStackAmount(ItemList.ItemList[i]);
 		}
 	}
 
@@ -294,33 +377,34 @@ bool UItemProcessor_Stackable::DragDropItem(FInventoryItemList& DragItemList, in
 	const auto DragItemInstance = DragItemList.ItemList[DragIndex].ItemInstance;
 	const auto DropItemInstance = DropItemList.ItemList[DropIndex].ItemInstance;
 	
-	const auto DragItemDef = DragItemInstance ? DragItemInstance->ItemDefinition : nullptr;
-	const auto DropItemDef = DropItemInstance ? DropItemInstance->ItemDefinition : nullptr;
+	const auto DragItemDef = DragItemList.ItemList[DragIndex].ItemDefinition;
+	const auto DropItemDef = DropItemList.ItemList[DropIndex].ItemDefinition;
 	
-	const auto DragItemStackAmount = IsStackableItem(DragItemInstance) ?
-		IStackableItem::Execute_GetStackAmount(DragItemInstance) : 1;
-	const auto DropItemStackAmount = IsStackableItem(DropItemInstance) ?
-		IStackableItem::Execute_GetStackAmount(DropItemInstance) : 1;
+	const auto DragItemStackAmount = GetEntryStackAmount(DragItemList.ItemList[DragIndex]);
+	const auto DropItemStackAmount = GetEntryStackAmount(DropItemList.ItemList[DropIndex]);
 
-	const auto ItemMaxStackAmount = IsStackableItem(DragItemInstance) ?
-		IStackableItem::Execute_GetMaxStackAmount(DragItemInstance) : 1;
+	const auto ItemMaxStackAmount = GetEntryMaxStackAmount(DragItemList.ItemList[DragIndex]);
 	const bool bIsSame = DragItemDef == DropItemDef;
 	const bool bSameExchange = bIsSame && (ItemMaxStackAmount == DragItemStackAmount || ItemMaxStackAmount == DropItemStackAmount);
 	
 	// 1. Not the same definition or Max stack exchange
 	if (!bIsSame || bSameExchange)
 	{
-		const auto TempDragInstance = DragItemList.ItemList[DragIndex].ItemInstance;
-		const auto TempDropInstance = DropItemList.ItemList[DropIndex].ItemInstance;
+		DragItemList.ItemList[DragIndex].ItemDefinition = DropItemDef;
+		DragItemList.ItemList[DragIndex].ItemStack = DropItemStackAmount;
+		DragItemList.ItemList[DragIndex].ItemInstance = DropItemInstance;
+		DropItemList.ItemList[DropIndex].ItemDefinition = DragItemDef;
+		DropItemList.ItemList[DropIndex].ItemStack = DragItemStackAmount;
+		DropItemList.ItemList[DropIndex].ItemInstance = DragItemInstance;
 
-		DragItemList.ItemList[DragIndex].ItemInstance = TempDropInstance;
-		DropItemList.ItemList[DropIndex].ItemInstance = TempDragInstance;
-
-		if (TempDropInstance)
+		if (DropItemInstance)
 		{
-			TempDropInstance->ChangeOuter(DragItemList.OuterObject);
+			DropItemInstance->ChangeOuter(DragItemList.OuterObject);
 		}
-		TempDragInstance->ChangeOuter(DropItemList.OuterObject);
+		if (DragItemInstance)
+		{
+			DragItemInstance->ChangeOuter(DropItemList.OuterObject);
+		}
 		
 		DragItemList.MarkIndexDirty({DragIndex});
 		DropItemList.MarkIndexDirty({DropIndex});
@@ -328,20 +412,10 @@ bool UItemProcessor_Stackable::DragDropItem(FInventoryItemList& DragItemList, in
 	}
 
 	// 2. Is the same definition
-	if (IsStackableItem(DropItemInstance))
-	{
-		auto& DragRef = DragItemList.ItemList[DragIndex].ItemInstance;
-		if (IStackableItem::Execute_StackItemInstance(DropItemInstance, DragRef, -1))
-		{
-			DragItemList.MarkIndexDirty({DragIndex});
-			return true;
-		}
-
-		// Can stack part
-		return true;
-	}
-	
-	return false;
+	StackItemEntry(DropItemList.ItemList[DropIndex], DragItemList.ItemList[DragIndex]);
+	DragItemList.MarkIndexDirty({DragIndex});
+	DropItemList.MarkIndexDirty({DropIndex});
+	return true;
 }
 
 bool UItemProcessor_Stackable::QuickMoveItem(FInventoryItemList& FromItemList, int FromIndex,
@@ -349,7 +423,7 @@ bool UItemProcessor_Stackable::QuickMoveItem(FInventoryItemList& FromItemList, i
 {
 	if (FromItemList.ItemList.IsValidIndex(FromIndex))
 	{
-		if (AddItem(ToItemList, FromItemList.ItemList[FromIndex].ItemInstance))
+		if (AddItem(ToItemList, FromItemList.ItemList[FromIndex]))
 		{
 			FromItemList.MarkIndexDirty({FromIndex});
 			return true;
@@ -363,21 +437,7 @@ bool UItemProcessor_Stackable::CanSlotSplit(FInventoryItemList& ItemList, int Sl
 {
 	if (ItemList.ItemList.IsValidIndex(SlotIndex))
 	{
-		return CanItemSplit(ItemList.ItemList[SlotIndex].ItemInstance);
-	}
-	
-	return false;
-}
-
-bool UItemProcessor_Stackable::CanItemSplit(const UInventoryItemInstance* ItemInstance)
-{
-	if (ItemInstance && IsStackableItem(ItemInstance))
-	{
-		const auto StackAmount = IStackableItem::Execute_GetStackAmount(ItemInstance);
-		if (StackAmount > 1)
-		{
-			return true;
-		}
+		return GetEntryStackAmount(ItemList.ItemList[SlotIndex]) > 1;
 	}
 	
 	return false;
@@ -386,23 +446,45 @@ bool UItemProcessor_Stackable::CanItemSplit(const UInventoryItemInstance* ItemIn
 bool UItemProcessor_Stackable::SplitItem(FInventoryItemList& SplitItemList, int SplitIndex, int SplitAmount,
 	FInventoryItemList& ContainerToSplit)
 {
-	if (const UInventoryItemInstance* ItemInstance = SplitItemList.ItemList.IsValidIndex(SplitIndex) ? SplitItemList.ItemList[SplitIndex].ItemInstance : nullptr)
+	if (!SplitItemList.ItemList.IsValidIndex(SplitIndex))
 	{
-		if (!CanItemSplit(ItemInstance) || SplitAmount < 1)
-		{
-			return false;
-		}
+		return false;
+	}
+	if (SplitItemList.ItemList[SplitIndex].IsSlotEmpty())
+	{
+		return false;
+	}
+	if (!CanSlotSplit(SplitItemList, SplitIndex) || SplitAmount < 1)
+	{
+		return false;
+	}
 
-		const auto FoundEmptyIndex = UInventorySystemLibrary::FindFirstEmptySlot(ContainerToSplit);
-		if (FoundEmptyIndex >= 0)
+	const auto FoundEmptyIndex = UInventorySystemLibrary::FindFirstEmptySlot(ContainerToSplit);
+	if (FoundEmptyIndex >= 0)
+	{
+		ContainerToSplit.ItemList[FoundEmptyIndex].ItemDefinition = SplitItemList.ItemList[SplitIndex].ItemDefinition;
+		if (const auto NewInstance = UInventoryItemInstance::NewItemInstance(ContainerToSplit.OuterObject, SplitItemList.ItemList[SplitIndex].ItemDefinition))
 		{
-			const auto NewInstance = UInventoryItemInstance::NewItemInstance(ContainerToSplit.OuterObject, ItemInstance->ItemDefinition);
-			auto& Ref = SplitItemList.ItemList[SplitIndex].ItemInstance;
-			IStackableItem::Execute_StackItemInstance(NewInstance, Ref, SplitAmount);
 			ContainerToSplit.ItemList[FoundEmptyIndex].ItemInstance = NewInstance;
-			ContainerToSplit.MarkIndexDirty({FoundEmptyIndex});
-			return true;
+			if (IsStackableItem(NewInstance))
+			{
+				IStackableItem::Execute_StackItemInstance(NewInstance, SplitItemList.ItemList[SplitIndex].ItemInstance, -1);
+			}
+			else
+			{
+				ContainerToSplit.ItemList[FoundEmptyIndex].ItemStack = SplitAmount;
+				SplitItemList.ItemList[SplitIndex].ItemStack -= SplitAmount;
+			}
 		}
+		else
+		{
+			ContainerToSplit.ItemList[FoundEmptyIndex].ItemStack = SplitAmount;
+			SplitItemList.ItemList[SplitIndex].ItemStack -= SplitAmount;
+		}
+			
+		SplitItemList.MarkIndexDirty({SplitIndex});
+		ContainerToSplit.MarkIndexDirty({FoundEmptyIndex});
+		return true;
 	}
 	
 	return false;

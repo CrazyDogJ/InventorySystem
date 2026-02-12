@@ -2,12 +2,16 @@
 
 #include "Actors/ItemActor_StaticMesh.h"
 
+#include "InventoryItemDefinition.h"
+#include "StreamingLevelSaveLibrary.h"
+
 AItemActor_StaticMesh::AItemActor_StaticMesh()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	RootStaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RootStaticMesh"));
 	SetRootComponent(RootStaticMeshComponent);
 	RootStaticMeshComponent->bApplyImpulseOnDamage = true;
+	RootStaticMeshComponent->SetIsReplicated(true);
 }
 
 void AItemActor_StaticMesh::NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other,
@@ -15,7 +19,7 @@ void AItemActor_StaticMesh::NotifyHit(class UPrimitiveComponent* MyComp, AActor*
 	FVector NormalImpulse, const FHitResult& Hit)
 {
 	Super::NotifyHit(MyComp, Other, OtherComp, bSelfMoved, HitLocation, HitNormal, NormalImpulse, Hit);
-	RootStaticMeshComponent->SetSimulatePhysics(true);
+	Interact();
 }
 
 float AItemActor_StaticMesh::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
@@ -23,10 +27,38 @@ float AItemActor_StaticMesh::TakeDamage(float DamageAmount, struct FDamageEvent 
 {
 	if (bReceiveHitAndDamage)
 	{
-		RootStaticMeshComponent->SetSimulatePhysics(true);
+		Interact();
 	}
 	
 	return Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+}
+
+void AItemActor_StaticMesh::PostTransRuntime()
+{
+	Interact();
+}
+
+void AItemActor_StaticMesh::OnRep_ItemEntry()
+{
+	Super::OnRep_ItemEntry();
+
+	if (ItemEntry.ItemDefinition && ItemEntry.ItemDefinition->ItemActorDesc.IsValid())
+	{
+		if (const auto Desc = ItemEntry.ItemDefinition->ItemActorDesc.GetPtr<FItemActorDesc_Static>())
+		{
+			// These functions should only be called by authority.
+			if (HasAuthority())
+			{
+				RootStaticMeshComponent->SetStaticMesh(Desc->StaticMesh);
+			}
+			
+			RootStaticMeshComponent->SetMassOverrideInKg(NAME_None, Desc->MassOverrideInKg, Desc->bShouldOverrideMass);
+			RootStaticMeshComponent->SetCollisionObjectType(Desc->CollisionChannel);
+			RootStaticMeshComponent->SetCollisionResponseToChannels(Desc->MeshCollisionResponseContainer);
+			RootStaticMeshComponent->SetSimulatePhysics(Desc->bSimulatePhysics && !Desc->bLockPhysicsOnStart);
+			RegisterWakeEvents(Desc->bSimulatePhysics && Desc->bLockPhysicsOnStart);
+		}
+	}
 }
 
 void AItemActor_StaticMesh::RegisterWakeEvents(const bool bRegisterOrNot)
@@ -35,15 +67,17 @@ void AItemActor_StaticMesh::RegisterWakeEvents(const bool bRegisterOrNot)
 	RootStaticMeshComponent->BodyInstance.bNotifyRigidBodyCollision = bReceiveHitAndDamage;
 }
 
-void FItemActorDesc_Static::SetupActor(AInventoryItemActor* InItemActor)
+void AItemActor_StaticMesh::Interact()
 {
-	if (const auto ItemActor = Cast<AItemActor_StaticMesh>(InItemActor))
+	if (HasAuthority())
 	{
-		ItemActor->RootStaticMeshComponent->SetStaticMesh(StaticMesh);
-		ItemActor->RootStaticMeshComponent->SetMassOverrideInKg(NAME_None, MassOverrideInKg, bShouldOverrideMass);
-		ItemActor->RootStaticMeshComponent->SetCollisionObjectType(CollisionChannel);
-		ItemActor->RootStaticMeshComponent->SetCollisionResponseToChannels(MeshCollisionResponseContainer);
-		ItemActor->RootStaticMeshComponent->SetSimulatePhysics(bSimulatePhysics && !bLockPhysicsOnStart);
-		ItemActor->RegisterWakeEvents(bSimulatePhysics && bLockPhysicsOnStart);
+		if (!UStreamingLevelSaveLibrary::IsRuntimeObject(this))
+		{
+			TransToRuntimeActor();
+		}
+		else
+		{
+			RootStaticMeshComponent->SetSimulatePhysics(true);
+		}
 	}
 }

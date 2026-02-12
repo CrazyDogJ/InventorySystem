@@ -33,11 +33,9 @@ FReply FItemEntryPropertyTypeCustomization::OnPickDataAssetClicked(TSharedRef<IP
 			if (CurrentEntry)
 			{
 				CurrentEntry->EmptySlot();
+				CurrentEntry->ItemDefinition = SelectedDataAsset;
+				CurrentEntry->ItemStack = 1;
 				CurrentEntry->ItemInstance = UInventoryItemInstance::NewItemInstance(CurrentOuter, SelectedDataAsset);
-				if (const auto Stackable = Cast<UItemInstance_Stackable>(CurrentEntry->ItemInstance))
-				{
-					Stackable->StackAmount = 1;
-				}
 				PropertyHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
 			}
 		}

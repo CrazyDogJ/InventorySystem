@@ -1,28 +1,28 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "FastArraySerializers/InventoryListContainer.h"
-
 #include "InventoryItemDefinition.h"
-#include "InventoryItemInstance.h"
 
-FInventoryItemEntry::FInventoryItemEntry(UObject* Outer, UInventoryItemDefinition* ItemDefinition)
+FInventoryItemEntry::FInventoryItemEntry(UInventoryItemDefinition* InItemDefinition)
 {
-	ItemInstance = UInventoryItemInstance::NewItemInstance(Outer, ItemDefinition);
+	ItemDefinition = InItemDefinition;
+	ItemStack = 1;
 }
 
 bool FInventoryItemEntry::IsSlotEmpty() const
 {
-	return ItemInstance == nullptr;
+	return ItemDefinition == nullptr;
 }
 
 void FInventoryItemEntry::EmptySlot()
 {
+	ItemDefinition = nullptr;
+	ItemStack = 0;
 	if (ItemInstance)
 	{
 		ItemInstance->ConditionalBeginDestroy();
-		ItemInstance = nullptr;
 	}
+	ItemInstance = nullptr;
 }
 
 void FInventoryItemList::EmptySlotByIndex(TArray<int32> Indices, bool bDirty)
@@ -126,7 +126,7 @@ void FInventoryItemList::PostReplicatedChange(const TArrayView<int32>& ChangedIn
 	OnItemListChange.Broadcast(Indices);
 }
 
-bool FInventoryItemList::NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
+bool FInventoryItemList::NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParams)
 {
-	return FFastArraySerializer::FastArrayDeltaSerialize<FInventoryItemEntry, FInventoryItemList>(ItemList, DeltaParms, *this);
+	return FFastArraySerializer::FastArrayDeltaSerialize<FInventoryItemEntry, FInventoryItemList>(ItemList, DeltaParams, *this);
 }

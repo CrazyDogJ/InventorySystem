@@ -5,7 +5,6 @@
 
 #include "InventoryItemDefinition.h"
 #include "InventorySaveGame.h"
-#include "InventorySystemLibrary.h"
 #include "StreamingLevelSaveComponent.h"
 #include "StreamingLevelSaveLibrary.h"
 #include "Net/UnrealNetwork.h"
@@ -23,23 +22,33 @@ void AInventoryItemActor::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ThisClass, ItemInstance)
+	DOREPLIFETIME(ThisClass, ItemEntry)
 }
 
 void AInventoryItemActor::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
+	// Valid item stack.
+	const auto MaxStack = UItemProcessor_Stackable::GetEntryMaxStackAmount(ItemEntry);
+	ItemEntry.ItemStack = FMath::Clamp(ItemEntry.ItemStack, 1, MaxStack);
+	
 #if WITH_EDITOR
 	// Check item instance is updated.
-	if (ItemDefinition)
+	if (GetWorld()->IsEditorWorld() && ItemEntry.ItemDefinition)
 	{
 		CheckShouldRefresh();
-		ItemDefinition->PropertyChangedDelegate.AddUObject(this, &ThisClass::OnItemDefPropertyChanged);
+		ItemEntry.ItemDefinition->PropertyChangedDelegate.AddUObject(this, &ThisClass::OnItemDefPropertyChanged);
 	}
 #endif
 	
-	OnRep_ItemInstance();
+	OnRep_ItemEntry();
+
+	if (UStreamingLevelSaveLibrary::IsRuntimeObject(this) && HasAuthority() && !LevelSaveComponent)
+	{
+		const auto NewComp = AddComponentByClass(UStreamingLevelSaveComponent::StaticClass(), false, FTransform(), false);
+		LevelSaveComponent = Cast<UStreamingLevelSaveComponent>(NewComp);
+	}
 }
 
 void AInventoryItemActor::BeginPlay()
@@ -47,20 +56,28 @@ void AInventoryItemActor::BeginPlay()
 	Super::BeginPlay();
 
 	// Manually add replicated sub-object when begin play.
-	if (ItemInstance)
+	if (ItemEntry.ItemInstance)
 	{
-		AddReplicatedSubObject(ItemInstance);
+		AddReplicatedSubObject(ItemEntry.ItemInstance);
 	}
-	if (UStreamingLevelSaveLibrary::IsRuntimeObject(this))
+}
+
+void AInventoryItemActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	// Remove item instance for streaming level. Otherwise, will cause crash when back to world.
+	if (ItemEntry.ItemInstance)
 	{
-		AddComponentByClass(UStreamingLevelSaveComponent::StaticClass(), false, FTransform(), false);
+		RemoveReplicatedSubObject(ItemEntry.ItemInstance);
+		ItemEntry.ItemInstance = nullptr;
 	}
 }
 
 FInstancedStruct AInventoryItemActor::GetSaveData_Implementation()
 {
 	FInventoryItemEntrySaveData SaveData;
-	GetSaveData(SaveData);
+	SaveData.SaveEntry(ItemEntry);
 	return FInstancedStruct::Make(SaveData);
 }
 
@@ -68,24 +85,24 @@ void AInventoryItemActor::LoadSaveData_Implementation(const FInstancedStruct& Sa
 {
 	if (const auto Ptr = SaveData.GetPtr<FInventoryItemEntrySaveData>())
 	{
-		LoadSaveData(*Ptr);
+		Ptr->LoadEntry(ItemEntry, this);
+		OnRep_ItemEntry();
+		if (ItemEntry.ItemInstance)
+		{
+			AddReplicatedSubObject(ItemEntry.ItemInstance);
+		}
 	}
 }
 
 #if WITH_EDITOR
 void AInventoryItemActor::RefreshItemInstance()
 {
-	if (ItemDefinition)
+	if (ItemEntry.ItemDefinition)
 	{
 		Modify();
 		
-		ItemInstance = UInventoryItemInstance::NewItemInstance(this, ItemDefinition);
-		// Auto set num is 1.
-		if (const auto Stackable = Cast<UItemInstance_Stackable>(ItemInstance))
-		{
-			Stackable->StackAmount = 1;
-		}
-		OnRep_ItemInstance();
+		ItemEntry.ItemInstance = UInventoryItemInstance::NewItemInstance(this, ItemEntry.ItemDefinition);
+		OnRep_ItemEntry();
 
 		// ReSharper disable once CppExpressionWithoutSideEffects
 		MarkPackageDirty();
@@ -94,16 +111,30 @@ void AInventoryItemActor::RefreshItemInstance()
 
 void AInventoryItemActor::CheckShouldRefresh()
 {
-	if (ItemInstance)
+	// Not valid;
+	if (ItemEntry.ItemDefinition)
 	{
-		if (ItemDefinition->ItemInstance->GetClass() != ItemInstance->GetClass())
+		if (const auto ItemFrag = ItemEntry.ItemDefinition->GetFragmentPtr<FItemFragment_ItemInstance>())
 		{
-			RefreshItemInstance();
+			if (ItemFrag->ItemInstance && !ItemEntry.ItemInstance)
+			{
+				RefreshItemInstance();
+				return;
+			}
 		}
 	}
-	else
+	
+	// Not the same class.
+	if (const auto Def = ItemEntry.ItemDefinition)
 	{
-		RefreshItemInstance();
+		if (const auto Ptr = Def->GetFragmentPtr<FItemFragment_ItemInstance>())
+		{
+			if (Ptr->ItemInstance->GetClass() != ItemEntry.ItemInstance->GetClass())
+			{
+				RefreshItemInstance();
+				return;
+			}
+		}
 	}
 }
 
@@ -123,38 +154,16 @@ void AInventoryItemActor::NotifyItemActorPickedUp()
 void AInventoryItemActor::TransToRuntimeActor()
 {
 	// Only persistent item actor can trans.
-	if (!UStreamingLevelSaveLibrary::IsRuntimeObject(this) && HasAuthority())
+	if (!UStreamingLevelSaveLibrary::IsRuntimeObject(this) && HasAuthority() && ItemEntry.ItemDefinition && ItemEntry.ItemDefinition->ItemActorDesc.IsValid())
 	{
+		const auto Desc = ItemEntry.ItemDefinition->ItemActorDesc.GetPtr<FItemActorDescBase>();
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Template = this;
-		GetWorld()->SpawnActor(StaticClass(), &GetActorTransform(), SpawnParams);
+		const FTransform Empty = FTransform::Identity;
+		GetWorld()->SpawnActor(Desc->GetItemActorClass(), &Empty, SpawnParams);
 		Destroy(true);
 	}
 }
 
-void AInventoryItemActor::GetSaveData(FInventoryItemEntrySaveData& OutSaveData) const
-{
-	// Get entry data.
-	FInventoryItemEntry NewEntry;
-	NewEntry.ItemInstance = ItemInstance;
-	OutSaveData.SaveEntry(NewEntry);
-}
-
-void AInventoryItemActor::LoadSaveData(const FInventoryItemEntrySaveData& InSaveData)
-{
-	FInventoryItemEntry NewEntry;
-	InSaveData.LoadEntry(NewEntry, this);
-	ItemInstance = NewEntry.ItemInstance;
-	OnRep_ItemInstance();
-}
-
-void AInventoryItemActor::OnRep_ItemInstance()
-{
-	if (ItemInstance && ItemInstance->ItemDefinition)
-	{
-		if (const auto DescPtr = ItemInstance->ItemDefinition->ItemActorDesc.GetMutablePtr<>())
-		{
-			DescPtr->SetupActor(this);
-		}
-	}
-}
+void AInventoryItemActor::OnRep_ItemEntry()
+{}

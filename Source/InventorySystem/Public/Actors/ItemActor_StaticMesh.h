@@ -27,8 +27,12 @@ public:
 	
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+	virtual void PostTransRuntime() override;
+	virtual void OnRep_ItemEntry() override;
 	
 	void RegisterWakeEvents(const bool bRegisterOrNot);
+
+	void Interact();
 };
 
 /** Default static mesh item actor. */
@@ -69,7 +73,6 @@ struct FItemActorDesc_Static : public FItemActorDescBase
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Collision")
 	FCollisionResponseContainer MeshCollisionResponseContainer;
 
-	virtual TSubclassOf<AInventoryItemActor> GetItemActorClass() override { return ItemActorClassOverride; }
-	virtual bool IsDataValid() override { return ItemActorClassOverride && StaticMesh != nullptr; }
-	virtual void SetupActor(AInventoryItemActor* InItemActor) override;
+	virtual TSubclassOf<AInventoryItemActor> GetItemActorClass() const override { return ItemActorClassOverride; }
+	virtual bool IsDataValid() const override { return ItemActorClassOverride && StaticMesh != nullptr; }
 };
