@@ -2,7 +2,6 @@
 
 #include "InventoryUserWidget.h"
 #include "InventoryContainerComponent.h"
-#include "InventorySubsystem.h"
 
 void UInventoryUserWidget::NativeConstruct()
 {
@@ -37,15 +36,6 @@ void UInventoryUserWidget::GetCurrentItemEntry(FInventoryItemEntry& OutItemEntry
 	OutItemEntry = OverrideItemEntry;
 }
 
-UInventorySubsystem* UInventoryUserWidget::GetOwningInventorySubsystem() const
-{
-	if (GetOwningPlayer())
-	{
-		return GetOwningPlayer()->GetLocalPlayer()->GetSubsystem<UInventorySubsystem>();
-	}
-	return nullptr;
-}
-
 void UInventoryUserWidget::ManageDelegates(const bool& bManage)
 {
 	if (!ItemListPtr) return;
@@ -74,6 +64,12 @@ void UInventoryUserWidget::InitParams(UInventoryContainerComponent* InContainer,
 	InventoryContainer = InContainer;
 	ItemListPtr = &InContainer->ItemList;
 	Index = InIndex;
+}
+
+void UInventoryUserWidget::InitParamsPoolWidget(UInventoryContainerComponent* InContainer, int InIndex)
+{
+	InitParams(InContainer, InIndex);
+	NativePostInventoryInitialize();
 }
 
 void UInventoryUserWidget::ClearParams()

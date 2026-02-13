@@ -51,12 +51,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Inventory System|User Widget")
 	void GetCurrentItemEntry(FInventoryItemEntry& OutItemEntry) const;
 
-	// Get current widget's inventory subsystem.
-	UFUNCTION(BlueprintPure, Category = "Inventory System|User Widget")
-	UInventorySubsystem* GetOwningInventorySubsystem() const;
-
 	void ManageDelegates(const bool& bManage);
 	void InitParams(UInventoryContainerComponent* InContainer, int InIndex = -1);
+
+	// Using third party plugin.
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|User Widget")
+	void InitParamsPoolWidget(UInventoryContainerComponent* InContainer, int InIndex = -1);
+	// Using third party plugin.
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|User Widget")
+	void PreReleasePoolWidget() { NativePreReleaseWidgetPool(); }
+	
 	void ClearParams();
 
 	virtual void NativePostInventoryInitialize();
