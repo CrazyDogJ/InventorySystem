@@ -64,7 +64,7 @@ void AItemActor_StaticMesh::OnRep_ItemEntry()
 void AItemActor_StaticMesh::RegisterWakeEvents(const bool bRegisterOrNot)
 {
 	bReceiveHitAndDamage = bRegisterOrNot;
-	RootStaticMeshComponent->BodyInstance.bNotifyRigidBodyCollision = bReceiveHitAndDamage;
+	RootStaticMeshComponent->BodyInstance.SetInstanceNotifyRBCollision(bReceiveHitAndDamage);
 }
 
 void AItemActor_StaticMesh::Interact()

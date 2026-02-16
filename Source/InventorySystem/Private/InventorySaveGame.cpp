@@ -18,6 +18,12 @@ void FInventoryItemEntrySaveData::SaveEntry(const FInventoryItemEntry& InItemEnt
 			InItemEntry.ItemInstance->GetSaveData(ItemInstanceData);
 		}
 	}
+	else
+	{
+		ItemDefinition = TSoftObjectPtr<UInventoryItemDefinition>();
+		ItemStack = 0;
+		ItemInstanceData = TArray<uint8>();
+	}
 }
 
 void FInventoryItemEntrySaveData::LoadEntry(FInventoryItemEntry& InItemEntry, UObject* OuterObject) const

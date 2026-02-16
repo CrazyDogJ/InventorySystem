@@ -33,7 +33,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, ReplicatedUsing = OnRep_ItemEntry, Category = "Inventory System|Item Actor")
 	FInventoryItemEntry ItemEntry;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient)
 	UStreamingLevelSaveComponent* LevelSaveComponent;
 	
 public:

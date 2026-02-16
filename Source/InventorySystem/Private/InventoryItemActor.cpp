@@ -48,6 +48,7 @@ void AInventoryItemActor::OnConstruction(const FTransform& Transform)
 	{
 		const auto NewComp = AddComponentByClass(UStreamingLevelSaveComponent::StaticClass(), false, FTransform(), false);
 		LevelSaveComponent = Cast<UStreamingLevelSaveComponent>(NewComp);
+		LevelSaveComponent->bTickCheckCell = true;
 	}
 }
 
