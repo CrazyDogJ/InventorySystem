@@ -32,6 +32,7 @@ public class InventorySystem : ModuleRules
 				"GameplayTags",
 				"UMG", 
 				"StreamingLevelSave",
+				"ReplicatedFoliage",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -45,6 +46,8 @@ public class InventorySystem : ModuleRules
 				"Slate",
 				"SlateCore", 
 				"StreamingLevelSave",
+				"ReplicatedFoliage",
+				"Foliage"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

@@ -38,6 +38,10 @@
 		{
 			"Name": "StreamingLevelSave",
 			"Enabled": true
+		},
+		{
+			"Name": "ReplicatedFoliage",
+			"Enabled": true
 		}
 	]
 }

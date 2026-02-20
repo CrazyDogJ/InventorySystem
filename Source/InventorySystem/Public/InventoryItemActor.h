@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InventoryEntryInterface.h"
 #include "StreamingLevelSaveInterface.h"
 #include "FastArraySerializers/InventoryListContainer.h"
 #include "GameFramework/Actor.h"
@@ -12,7 +13,7 @@ class UStreamingLevelSaveComponent;
 class UInventoryItemDefinition;
 
 UCLASS()
-class INVENTORYSYSTEM_API AInventoryItemActor : public AActor, public IStreamingLevelSaveInterface
+class INVENTORYSYSTEM_API AInventoryItemActor : public AActor, public IStreamingLevelSaveInterface, public IInventoryEntryInterface
 {
 	GENERATED_BODY()
 	
@@ -27,6 +28,13 @@ protected:
 	virtual FInstancedStruct GetSaveData_Implementation() override;
 	virtual void LoadSaveData_Implementation(const FInstancedStruct& SaveData) override;
 	// Streaming Level Save Interface End --------------------
+
+	// Inventory Entry Interface
+	virtual FInventoryItemEntry GetItemEntry_Implementation() override { return ItemEntry; }
+	virtual void SetItemEntry_Implementation(FInventoryItemEntry NewEntry) override;
+	virtual bool IsItemEntryValid_Implementation(const int InstanceIndex) override { return true; }
+	virtual void OnEntryPickedUp_Implementation(int Index) override;
+	// Inventory Entry Interface
 public:
 	AInventoryItemActor();
 	
@@ -44,9 +52,7 @@ public:
 	void CheckShouldRefresh();
 	void OnItemDefPropertyChanged(const FPropertyChangedEvent& PropertyChangedEvent);
 #endif
-	// On actor picked up.
-	void NotifyItemActorPickedUp();
-
+	
 	void TransToRuntimeActor();
 
 protected:

@@ -10,6 +10,12 @@
 #include "Net/UnrealNetwork.h"
 #include "Processors/InventoryProcessor_Stackable.h"
 
+void AInventoryItemActor::OnEntryPickedUp_Implementation(int Index)
+{
+	NativeOnItemActorPickedUp();
+	OnItemActorPickedUp();
+}
+
 AInventoryItemActor::AInventoryItemActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -48,7 +54,6 @@ void AInventoryItemActor::OnConstruction(const FTransform& Transform)
 	{
 		const auto NewComp = AddComponentByClass(UStreamingLevelSaveComponent::StaticClass(), false, FTransform(), false);
 		LevelSaveComponent = Cast<UStreamingLevelSaveComponent>(NewComp);
-		LevelSaveComponent->bTickCheckCell = true;
 	}
 }
 
@@ -93,6 +98,11 @@ void AInventoryItemActor::LoadSaveData_Implementation(const FInstancedStruct& Sa
 			AddReplicatedSubObject(ItemEntry.ItemInstance);
 		}
 	}
+}
+
+void AInventoryItemActor::SetItemEntry_Implementation(FInventoryItemEntry NewEntry)
+{
+	ItemEntry = NewEntry;
 }
 
 #if WITH_EDITOR
@@ -145,12 +155,6 @@ void AInventoryItemActor::OnItemDefPropertyChanged(const FPropertyChangedEvent& 
 }
 
 #endif
-
-void AInventoryItemActor::NotifyItemActorPickedUp()
-{
-	NativeOnItemActorPickedUp();
-	OnItemActorPickedUp();
-}
 
 void AInventoryItemActor::TransToRuntimeActor()
 {

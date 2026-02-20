@@ -3,6 +3,7 @@
 #include "Actors/ItemActor_StaticMesh.h"
 
 #include "InventoryItemDefinition.h"
+#include "StreamingLevelSaveComponent.h"
 #include "StreamingLevelSaveLibrary.h"
 
 AItemActor_StaticMesh::AItemActor_StaticMesh()
@@ -55,7 +56,12 @@ void AItemActor_StaticMesh::OnRep_ItemEntry()
 			RootStaticMeshComponent->SetMassOverrideInKg(NAME_None, Desc->MassOverrideInKg, Desc->bShouldOverrideMass);
 			RootStaticMeshComponent->SetCollisionObjectType(Desc->CollisionChannel);
 			RootStaticMeshComponent->SetCollisionResponseToChannels(Desc->MeshCollisionResponseContainer);
-			RootStaticMeshComponent->SetSimulatePhysics(Desc->bSimulatePhysics && !Desc->bLockPhysicsOnStart);
+			const bool SimulatePhysics = Desc->bSimulatePhysics && !Desc->bLockPhysicsOnStart;
+			RootStaticMeshComponent->SetSimulatePhysics(SimulatePhysics);
+			if (LevelSaveComponent)
+			{
+				LevelSaveComponent->bTickCheckCell = SimulatePhysics;
+			}
 			RegisterWakeEvents(Desc->bSimulatePhysics && Desc->bLockPhysicsOnStart);
 		}
 	}
@@ -78,6 +84,10 @@ void AItemActor_StaticMesh::Interact()
 		else
 		{
 			RootStaticMeshComponent->SetSimulatePhysics(true);
+			if (LevelSaveComponent)
+			{
+				LevelSaveComponent->bTickCheckCell = true;
+			}
 		}
 	}
 }

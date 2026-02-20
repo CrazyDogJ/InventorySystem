@@ -108,10 +108,10 @@ public:
 	// Remember to mark index dirty after calling it if item instance come from item list.
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
 	static bool AddItem(UPARAM(ref)FInventoryItemList& ItemList, UPARAM(ref)FInventoryItemEntry& ItemEntry);
-	
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
-	static bool PickupItemActor(UPARAM(ref)FInventoryItemList& ItemList, AInventoryItemActor* ItemActor);
 
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
+	static bool PickupItemObject(UPARAM(ref)FInventoryItemList& ItemList, UObject* ItemObject, int InstanceIndex);
+	
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
 	static int GetItemTotalAmountByDefinition(const FInventoryItemList& ItemList, UInventoryItemDefinition* ItemDef);
 

@@ -283,17 +283,22 @@ bool UItemProcessor_Stackable::AddItem(FInventoryItemList& ItemList, FInventoryI
 	return false;
 }
 
-bool UItemProcessor_Stackable::PickupItemActor(FInventoryItemList& ItemList, AInventoryItemActor* ItemActor)
+bool UItemProcessor_Stackable::PickupItemObject(FInventoryItemList& ItemList, UObject* ItemObject, const int InstanceIndex)
 {
-	if (ItemActor != nullptr)
+	if (ItemObject != nullptr)
 	{
-		if (AddItem(ItemList, ItemActor->ItemEntry))
+		if (ItemObject->Implements<UInventoryEntryInterface>())
 		{
-			ItemActor->NotifyItemActorPickedUp();
-		}
-		else
-		{
-			return false;
+			if (IInventoryEntryInterface::Execute_IsItemEntryValid(ItemObject, InstanceIndex))
+			{
+				FInventoryItemEntry Entry = IInventoryEntryInterface::Execute_GetItemEntry(ItemObject);
+				const auto AddItemBool = AddItem(ItemList, Entry);
+				IInventoryEntryInterface::Execute_SetItemEntry(ItemObject, Entry);
+				if (AddItemBool)
+				{
+					IInventoryEntryInterface::Execute_OnEntryPickedUp(ItemObject, InstanceIndex);
+				}
+			}
 		}
 	}
 	
@@ -301,7 +306,7 @@ bool UItemProcessor_Stackable::PickupItemActor(FInventoryItemList& ItemList, AIn
 }
 
 int UItemProcessor_Stackable::GetItemTotalAmountByDefinition(const FInventoryItemList& ItemList,
-	UInventoryItemDefinition* ItemDef)
+                                                             UInventoryItemDefinition* ItemDef)
 {
 	int Result = 0;
 	
