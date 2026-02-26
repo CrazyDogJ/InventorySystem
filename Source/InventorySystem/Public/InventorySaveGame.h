@@ -25,7 +25,7 @@ struct FInventoryItemEntrySaveData
 	TSoftObjectPtr<UInventoryItemDefinition> ItemDefinition;
 
 	UPROPERTY(SaveGame)
-	int ItemStack;
+	int ItemStack = 0;
 	
 	UPROPERTY(SaveGame)
 	TArray<uint8> ItemInstanceData;

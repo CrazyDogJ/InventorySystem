@@ -74,5 +74,5 @@ struct INVENTORYSYSTEM_API FItemFragment_ItemInstance
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Instanced)
-	UInventoryItemInstance* ItemInstance;
+	UInventoryItemInstance* ItemInstance = nullptr;
 };

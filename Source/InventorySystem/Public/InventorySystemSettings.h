@@ -19,9 +19,6 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, Category = "Inventory Interfaces")
 	TMap<FString, TSoftClassPtr<UInventoryUserWidget>> UserWidgets_Cpp;
-
-	UPROPERTY(Config, EditAnywhere, Category = "Inventory Subsystem")
-	bool bClearTempFilesOnEndGame = false;
 	
 	TMap<TSoftClassPtr<UInterface>, TSoftClassPtr<UInventoryUserWidget>> GetAllUserWidgets();
 	TSubclassOf<UInventoryUserWidget> GetUserWidgetClass(TSubclassOf<UInterface> InInterface);
