@@ -22,7 +22,7 @@
 		{
 			"Name": "InventorySystemEditor",
 			"Type": "Editor",
-			"LoadingPhase": "PostEngineInit"
+			"LoadingPhase": "Default"
 		},
 		{
 			"Name": "InventorySystemNodes",
