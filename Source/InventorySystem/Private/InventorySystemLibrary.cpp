@@ -53,12 +53,7 @@ void UInventorySystemLibrary::EmptySlots(FInventoryItemList& ItemList, TArray<in
 
 UInventoryItemInstance* UInventorySystemLibrary::GetItemInstance(FInventoryItemList& ItemList, int Index)
 {
-	if (ItemList.ItemList.IsValidIndex(Index))
-	{
-		return ItemList.ItemList[Index].ItemInstance;
-	}
-
-	return nullptr;
+	return ItemList.GetItemInstance(Index);
 }
 
 bool UInventorySystemLibrary::IsItemEntryEmpty(const FInventoryItemEntry& ItemEntry)
@@ -68,25 +63,12 @@ bool UInventorySystemLibrary::IsItemEntryEmpty(const FInventoryItemEntry& ItemEn
 
 bool UInventorySystemLibrary::IsSlotEmpty(FInventoryItemList& ItemList, int Index)
 {
-	if (ItemList.ItemList.IsValidIndex(Index))
-	{
-		return ItemList.ItemList[Index].IsSlotEmpty();
-	}
-	
-	return false;
+	return ItemList.IsSlotEmpty(Index);
 }
 
 int UInventorySystemLibrary::FindFirstEmptySlot(const FInventoryItemList& ItemList)
 {
-	for (int i = 0; i < ItemList.ItemList.Num(); ++i)
-	{
-		if (ItemList.ItemList[i].IsSlotEmpty())
-		{
-			return i;
-		}
-	}
-	
-	return INDEX_NONE;
+	return ItemList.FindFirstEmptySlot();
 }
 
 void UInventorySystemLibrary::AssignItemAddEvent(FInventoryItemList& ItemList,

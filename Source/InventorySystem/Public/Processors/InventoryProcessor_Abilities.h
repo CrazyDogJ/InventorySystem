@@ -138,4 +138,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Abilities", BlueprintAuthorityOnly)
 	static bool TakeFromAbilitySystem(UInventoryItemInstance* InItemInstance, UAbilitySystemComponent* ASC);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Abilities", BlueprintAuthorityOnly)
+	static bool GiveToAbilitySystemHandles(UInventoryItemDefinition* ItemDefinition, UPARAM(ref)FAbilitySet_GrantedHandles& InHandles, UAbilitySystemComponent* ASC);
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Abilities", BlueprintAuthorityOnly)
+	static bool TakeFromAbilitySystemHandles(UPARAM(ref)FAbilitySet_GrantedHandles& InHandles, UAbilitySystemComponent* ASC);
 };

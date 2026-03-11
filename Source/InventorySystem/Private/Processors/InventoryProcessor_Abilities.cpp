@@ -183,3 +183,27 @@ bool UItemProcessor_Abilities::TakeFromAbilitySystem(UInventoryItemInstance* InI
 	
 	return false;
 }
+
+bool UItemProcessor_Abilities::GiveToAbilitySystemHandles(UInventoryItemDefinition* ItemDefinition, FAbilitySet_GrantedHandles& InHandles,
+	UAbilitySystemComponent* ASC)
+{
+	if (const auto AbilitiesSet = ItemDefinition->GetFragmentPtr<FItemFragment_Abilities>())
+	{
+		AbilitiesSet->GiveToAbilitySystem(ASC, InHandles, ASC);
+		return true;
+	}
+	
+	return false;
+}
+
+bool UItemProcessor_Abilities::TakeFromAbilitySystemHandles(FAbilitySet_GrantedHandles& InHandles,
+	UAbilitySystemComponent* ASC)
+{
+	if (!ASC)
+	{
+		return false;
+	}
+
+	InHandles.TakeFromAbilitySystem(ASC);
+	return true;
+}

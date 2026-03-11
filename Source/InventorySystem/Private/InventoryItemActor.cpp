@@ -36,8 +36,15 @@ void AInventoryItemActor::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 
 	// Valid item stack.
-	const auto MaxStack = UItemProcessor_Stackable::GetEntryMaxStackAmount(ItemEntry);
-	ItemEntry.ItemStack = FMath::Clamp(ItemEntry.ItemStack, 1, MaxStack);
+	if (ItemEntry.ItemInstance && ItemEntry.ItemInstance->Implements<UStackableItem>())
+	{
+		ItemEntry.ItemStack = 0;
+	}
+	else
+	{
+		const auto MaxStack = ItemEntry.GetMaxStackAmount();
+		ItemEntry.ItemStack = FMath::Clamp(ItemEntry.ItemStack, 1, MaxStack);
+	}
 	
 #if WITH_EDITOR
 	// Check item instance is updated.

@@ -11,6 +11,46 @@
 
 class UInventoryItemDefinition;
 
+////////////////////////////////
+/// Stackable Item Interface ///
+////////////////////////////////
+
+UINTERFACE(MinimalAPI)
+class UStackableItem : public UInterface
+{
+	GENERATED_BODY()
+};
+
+class INVENTORYSYSTEM_API IStackableItem
+{
+	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
+	int GetStackAmount() const;
+	virtual int GetStackAmount_Implementation() const { return 1; }
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
+	bool CanStack(const UInventoryItemInstance* ItemInstance) const;
+	virtual bool CanStack_Implementation(const UInventoryItemInstance* ItemInstance) const { return false; }
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
+	bool StackItemInstance(UInventoryItemInstance*& ItemInstance, int Amount = -1);
+	virtual bool StackItemInstance_Implementation(UInventoryItemInstance*& ItemInstance, int Amount = -1) { return false; }
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
+	int RemoveStack(int InAmount);
+	virtual int RemoveStack_Implementation(int InAmount) { return InAmount; }
+	
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
+	int GetMaxStackAmount() const;
+	virtual int GetMaxStackAmount_Implementation() const { return 1; }
+};
+
+/////////////////////////////////////
+/// Inventory Item List Container ///
+/////////////////////////////////////
+
 /** Item list entry. Will be common used in most situation. */
 USTRUCT(BlueprintType)
 struct INVENTORYSYSTEM_API FInventoryItemEntry : public FFastArraySerializerItem
@@ -18,7 +58,7 @@ struct INVENTORYSYSTEM_API FInventoryItemEntry : public FFastArraySerializerItem
 	GENERATED_BODY()
 
 	FInventoryItemEntry() {}
-	FInventoryItemEntry(UInventoryItemDefinition* InItemDefinition);
+	FInventoryItemEntry(UObject* OuterObject, UInventoryItemDefinition* InItemDefinition);
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UInventoryItemDefinition* ItemDefinition = nullptr;
@@ -31,6 +71,11 @@ struct INVENTORYSYSTEM_API FInventoryItemEntry : public FFastArraySerializerItem
 	
 	bool IsSlotEmpty() const;
 	void EmptySlot();
+	int GetStackAmount() const;
+	int GetMaxStackAmount() const;
+	bool CanEntryStack(const FInventoryItemEntry& OtherItemEntry) const;
+	bool StackEntry(FInventoryItemEntry& OtherEntry, int SpecificAmount = INDEX_NONE);
+	void RemoveStack(int SpecificAmount = 1);
 };
 
 /** Container for fast array inventory item entries. */
@@ -47,12 +92,25 @@ struct INVENTORYSYSTEM_API FInventoryItemList : public FFastArraySerializer
 	
 	// Empty the slot. If you want to dirty by your self, please set bDirty to false.
 	void EmptySlotByIndex(TArray<int32> Indices, bool bDirty = true);
-
 	void Clear();
 	
 	void AddEmptySlots(const int32 AddAmount);
 	void RemoveSlots(TArray<int32> Indices);
 	void MarkIndexDirty(TArray<int32> Indices);
+
+	bool IsSlotEmpty(int Index) const;
+	int FindFirstEmptySlot() const;
+	int FindFirstStackableSlot(const FInventoryItemEntry& OtherItemEntry) const;
+	int GetItemTotalAmountByDefinition(const UInventoryItemDefinition* ItemDef) const;
+	UInventoryItemInstance* GetItemInstance(int Index) const;
+	bool CanSlotSplit(int SlotIndex) const;
+
+	bool RemoveStackAtIndex(const int& Index, const int& Amount, const bool& bForceRemove = false);
+	int RemoveItemByDefinition(const UInventoryItemDefinition* ItemDef, const int& Amount, const bool& bForceRemove = false);
+	bool AddItem(FInventoryItemEntry& ItemEntry);
+	bool DragDropItem(int DragIndex, FInventoryItemList& DropItemList, int DropIndex);
+	bool QuickMoveItem(int FromIndex, FInventoryItemList& ToItemList);
+	bool SplitItem(int SplitIndex, int SplitAmount, FInventoryItemList& ContainerToSplit);
 	
 	void PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize);
 	void PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize);

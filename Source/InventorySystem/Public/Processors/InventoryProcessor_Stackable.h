@@ -9,38 +9,6 @@
 
 struct FInventoryItemList;
 
-UINTERFACE(MinimalAPI)
-class UStackableItem : public UInterface
-{
-	GENERATED_BODY()
-};
-
-class INVENTORYSYSTEM_API IStackableItem
-{
-	GENERATED_BODY()
-
-public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	int GetStackAmount() const;
-	virtual int GetStackAmount_Implementation() const { return 1; }
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	bool CanStack(const UInventoryItemInstance* ItemInstance) const;
-	virtual bool CanStack_Implementation(const UInventoryItemInstance* ItemInstance) const { return false; }
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	bool StackItemInstance(UInventoryItemInstance*& ItemInstance, int Amount = -1);
-	virtual bool StackItemInstance_Implementation(UInventoryItemInstance*& ItemInstance, int Amount = -1) { return false; }
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	int RemoveStack(int InAmount);
-	virtual int RemoveStack_Implementation(int InAmount) { return InAmount; }
-	
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	int GetMaxStackAmount() const;
-	virtual int GetMaxStackAmount_Implementation() const { return 1; }
-};
-
 UCLASS()
 class UItemInstance_Stackable : public UInventoryItemInstance, public IStackableItem
 {
@@ -115,6 +83,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
 	static int GetItemTotalAmountByDefinition(const FInventoryItemList& ItemList, UInventoryItemDefinition* ItemDef);
 
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
+	static bool RemoveStackAtIndex(UPARAM(ref)FInventoryItemList& ItemList, int Index, int Amount, bool bForceRemove);
+	
 	// Return remain amount.
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
 	static int RemoveItemByDefinition(UPARAM(ref)FInventoryItemList& ItemList, UInventoryItemDefinition* ItemDef, int Amount, bool bForceRemove = false);
