@@ -206,11 +206,12 @@ void FInventoryItemList::MarkIndexDirty(TArray<int32> Indices)
 	OnItemListChange.Broadcast(ChangedIndices);
 }
 
-bool FInventoryItemList::IsSlotEmpty(int Index) const
+bool FInventoryItemList::IsSlotEmpty(int Index, bool& Empty) const
 {
 	if (ItemList.IsValidIndex(Index))
 	{
-		return ItemList[Index].IsSlotEmpty();
+		Empty = ItemList[Index].IsSlotEmpty();
+		return true;
 	}
 	
 	return false;
@@ -421,9 +422,10 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 bool FInventoryItemList::DragDropItem(int DragIndex, FInventoryItemList& DropItemList, int DropIndex)
 {
 	// Not valid when drag slot is empty!!!
-	if (IsSlotEmpty(DragIndex) ||
-		!DropItemList.ItemList.IsValidIndex(DropIndex) ||
-		!ItemList.IsValidIndex(DragIndex)) return false;
+	
+	if (!DropItemList.ItemList.IsValidIndex(DropIndex) ||
+		!ItemList.IsValidIndex(DragIndex) ||
+		ItemList[DragIndex].IsSlotEmpty()) return false;
 
 	const auto DragItemInstance = ItemList[DragIndex].ItemInstance;
 	const auto DropItemInstance = DropItemList.ItemList[DropIndex].ItemInstance;

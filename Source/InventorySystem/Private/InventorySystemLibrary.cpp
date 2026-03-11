@@ -61,9 +61,9 @@ bool UInventorySystemLibrary::IsItemEntryEmpty(const FInventoryItemEntry& ItemEn
 	return ItemEntry.IsSlotEmpty();
 }
 
-bool UInventorySystemLibrary::IsSlotEmpty(FInventoryItemList& ItemList, int Index)
+bool UInventorySystemLibrary::IsSlotEmpty(FInventoryItemList& ItemList, int Index, bool& Empty)
 {
-	return ItemList.IsSlotEmpty(Index);
+	return ItemList.IsSlotEmpty(Index, Empty);
 }
 
 int UInventorySystemLibrary::FindFirstEmptySlot(const FInventoryItemList& ItemList)

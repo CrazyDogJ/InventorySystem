@@ -51,7 +51,7 @@ public:
 	static bool IsItemEntryEmpty(const FInventoryItemEntry& ItemEntry);
 	
 	UFUNCTION(BlueprintPure, Category = "Inventory System|Inventory Manage")
-	static bool IsSlotEmpty(UPARAM(ref)FInventoryItemList& ItemList, int Index);
+	static bool IsSlotEmpty(UPARAM(ref)FInventoryItemList& ItemList, int Index, bool& Empty);
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Inventory Manage")
 	static int FindFirstEmptySlot(const FInventoryItemList& ItemList);
