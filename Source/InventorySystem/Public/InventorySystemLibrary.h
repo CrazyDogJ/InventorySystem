@@ -42,6 +42,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Inventory Manage")
 	static void EmptySlots(UPARAM(ref)FInventoryItemList& ItemList, TArray<int32> Indices);
+
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Inventory Manage")
+	static UInventoryItemDefinition* GetItemDefinition(UPARAM(ref)FInventoryItemList& ItemList, int Index);
 	
 	/** Will return nullptr if slot has no item instance. */
 	UFUNCTION(BlueprintPure, Category = "Inventory System|Inventory Manage")

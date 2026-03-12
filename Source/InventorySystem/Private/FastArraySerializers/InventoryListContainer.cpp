@@ -259,7 +259,17 @@ int FInventoryItemList::GetItemTotalAmountByDefinition(const UInventoryItemDefin
 	return Result;
 }
 
-UInventoryItemInstance* FInventoryItemList::GetItemInstance(int Index) const
+UInventoryItemDefinition* FInventoryItemList::GetItemDefinition(const int& Index) const
+{
+	if (ItemList.IsValidIndex(Index))
+	{
+		return ItemList[Index].ItemDefinition;
+	}
+
+	return nullptr;
+}
+
+UInventoryItemInstance* FInventoryItemList::GetItemInstance(const int& Index) const
 {
 	if (ItemList.IsValidIndex(Index))
 	{
@@ -269,7 +279,7 @@ UInventoryItemInstance* FInventoryItemList::GetItemInstance(int Index) const
 	return nullptr;
 }
 
-bool FInventoryItemList::CanSlotSplit(int SlotIndex) const
+bool FInventoryItemList::CanSlotSplit(const int& SlotIndex) const
 {
 	if (ItemList.IsValidIndex(SlotIndex))
 	{

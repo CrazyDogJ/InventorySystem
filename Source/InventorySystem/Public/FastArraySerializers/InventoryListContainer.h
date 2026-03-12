@@ -102,8 +102,9 @@ struct INVENTORYSYSTEM_API FInventoryItemList : public FFastArraySerializer
 	int FindFirstEmptySlot() const;
 	int FindFirstStackableSlot(const FInventoryItemEntry& OtherItemEntry) const;
 	int GetItemTotalAmountByDefinition(const UInventoryItemDefinition* ItemDef) const;
-	UInventoryItemInstance* GetItemInstance(int Index) const;
-	bool CanSlotSplit(int SlotIndex) const;
+	UInventoryItemDefinition* GetItemDefinition(const int& Index) const;
+	UInventoryItemInstance* GetItemInstance(const int& Index) const;
+	bool CanSlotSplit(const int& SlotIndex) const;
 
 	bool RemoveStackAtIndex(const int& Index, const int& Amount, const bool& bForceRemove = false);
 	int RemoveItemByDefinition(const UInventoryItemDefinition* ItemDef, const int& Amount, const bool& bForceRemove = false);

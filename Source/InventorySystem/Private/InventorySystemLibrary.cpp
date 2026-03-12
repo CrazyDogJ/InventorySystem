@@ -51,6 +51,11 @@ void UInventorySystemLibrary::EmptySlots(FInventoryItemList& ItemList, TArray<in
 	ItemList.EmptySlotByIndex(Indices, true);
 }
 
+UInventoryItemDefinition* UInventorySystemLibrary::GetItemDefinition(FInventoryItemList& ItemList, int Index)
+{
+	return ItemList.GetItemDefinition(Index);
+}
+
 UInventoryItemInstance* UInventorySystemLibrary::GetItemInstance(FInventoryItemList& ItemList, int Index)
 {
 	return ItemList.GetItemInstance(Index);

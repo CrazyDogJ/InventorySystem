@@ -9,6 +9,7 @@
 
 struct FInventoryItemList;
 
+/** TODO : Not play test yet! */
 UCLASS()
 class UItemInstance_Stackable : public UInventoryItemInstance, public IStackableItem
 {
@@ -83,7 +84,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
 	static int GetItemTotalAmountByDefinition(const FInventoryItemList& ItemList, UInventoryItemDefinition* ItemDef);
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
 	static bool RemoveStackAtIndex(UPARAM(ref)FInventoryItemList& ItemList, int Index, int Amount, bool bForceRemove);
 	
 	// Return remain amount.
