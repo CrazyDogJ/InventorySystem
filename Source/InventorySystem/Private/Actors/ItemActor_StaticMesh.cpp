@@ -51,6 +51,7 @@ void AItemActor_StaticMesh::OnRep_ItemEntry()
 			if (HasAuthority())
 			{
 				RootStaticMeshComponent->SetStaticMesh(Desc->StaticMesh);
+				SetActorScale3D(Desc->Scale);
 			}
 			
 			RootStaticMeshComponent->SetMassOverrideInKg(NAME_None, Desc->MassOverrideInKg, Desc->bShouldOverrideMass);

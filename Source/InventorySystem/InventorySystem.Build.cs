@@ -47,7 +47,8 @@ public class InventorySystem : ModuleRules
 				"SlateCore", 
 				"StreamingLevelSave",
 				"ReplicatedFoliage",
-				"Foliage"
+				"Foliage", 
+				"InputTips"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

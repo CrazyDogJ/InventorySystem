@@ -20,6 +20,9 @@ struct FItemActorDescBase
 {
 	GENERATED_BODY()
 public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector Scale = FVector::OneVector;
+	
 	virtual ~FItemActorDescBase() = default;
 	
 	virtual bool IsDataValid() const { return false; }

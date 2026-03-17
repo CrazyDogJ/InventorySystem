@@ -3,6 +3,7 @@
 
 #include "Processors/InventoryProcessor_Stackable.h"
 
+#include "InventoryContainerComponent.h"
 #include "InventoryItemActor.h"
 #include "InventoryItemDefinition.h"
 #include "InventoryItemInstance.h"
@@ -169,11 +170,19 @@ bool UItemProcessor_Stackable::PickupItemObject(FInventoryItemList& ItemList, UO
 			if (IInventoryEntryInterface::Execute_IsItemEntryValid(ItemObject, InstanceIndex))
 			{
 				FInventoryItemEntry Entry = IInventoryEntryInterface::Execute_GetItemEntry(ItemObject);
+				const auto CachedItemDef = Entry.ItemDefinition;
+				const auto CachedAmount = Entry.GetStackAmount();
 				const auto AddItemBool = ItemList.AddItem(Entry);
 				IInventoryEntryInterface::Execute_SetItemEntry(ItemObject, Entry);
 				if (AddItemBool)
 				{
 					IInventoryEntryInterface::Execute_OnEntryPickedUp(ItemObject, InstanceIndex);
+				}
+				
+				// Trigger visual multicast.
+				if (const auto Container = Cast<UInventoryContainerComponent>(ItemList.OuterObject))
+				{
+					Container->OnItemPickupUpMulticast(CachedItemDef, CachedAmount - Entry.GetStackAmount());
 				}
 			}
 		}

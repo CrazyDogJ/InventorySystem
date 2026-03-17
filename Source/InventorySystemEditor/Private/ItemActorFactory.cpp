@@ -50,7 +50,9 @@ AActor* UItemActorFactory::SpawnActor(UObject* InAsset, ULevel* InLevel, const F
 
 	// Item Actor Spawn
 	const auto World = InLevel->GetWorld();
-	const auto NewActor = World->SpawnActor(ItemActorDesc->GetItemActorClass(), &InTransform);
+	auto Transform = InTransform;
+	Transform.SetScale3D(ItemActorDesc->Scale);
+	const auto NewActor = World->SpawnActor(ItemActorDesc->GetItemActorClass(), &Transform);
 	
 	// Item Actor Setup
 	const auto NewItemActor = Cast<AInventoryItemActor>(NewActor);

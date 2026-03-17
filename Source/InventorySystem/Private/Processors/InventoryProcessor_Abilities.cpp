@@ -4,6 +4,7 @@
 #include "Processors/InventoryProcessor_Abilities.h"
 
 #include "AbilitySystemComponent.h"
+#include "InputTipsLibrary.h"
 #include "InventoryItemDefinition.h"
 #include "InventoryItemInstance.h"
 
@@ -94,7 +95,7 @@ void FItemFragment_Abilities::GiveToAbilitySystem(const TObjectPtr<UAbilitySyste
 
         FGameplayAbilitySpec AbilitySpec(AbilityCDO, AbilityToGrant.AbilityLevel);
         AbilitySpec.SourceObject = SourceObject;
-        AbilitySpec.GetDynamicSpecSourceTags().AddTag(AbilityToGrant.InputTag);
+    	AbilitySpec.InputID = UInputTipsLibrary::GetInputIdByTag(AbilityToGrant.InputTag);
         
         const FGameplayAbilitySpecHandle AbilitySpecHandle = ASC->GiveAbility(AbilitySpec);
     	OutGrantedHandles.AddAbilitySpecHandle(AbilitySpecHandle);

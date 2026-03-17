@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InventoryItemDefinition.h"
 #include "StreamingLevelSaveInterface.h"
 #include "Components/ActorComponent.h"
 #include "FastArraySerializers/InventoryListContainer.h"
@@ -12,11 +13,10 @@ class UStreamingLevelSaveComponent;
 class AInventoryInfoActor;
 struct FInventoryItemListSaveData;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemPickedUp, const UInventoryItemDefinition*, ItemDef, int, Amount);
+
 /**
  * An inventory component that attach to visible actors.
- * There will be an inventory info actor for storing the inventory list.
- * You can try to access the info actor by this component.
- * But it will be nullptr if server don't want any specific connection to access it.
  */
 UCLASS(ClassGroup=(Inventory), meta=(BlueprintSpawnableComponent), Blueprintable)
 class INVENTORYSYSTEM_API UInventoryContainerComponent : public UActorComponent, public IStreamingLevelSaveInterface
@@ -52,4 +52,11 @@ public:
 	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory System|Container Component")
 	UStreamingLevelSaveComponent* StreamingLevelSaveComponent;
+
+	/** Visual multicast event for item picked. */
+	UFUNCTION(NetMulticast, Unreliable)
+	void OnItemPickupUpMulticast(const UInventoryItemDefinition* ItemDef, const int Amount);
+	
+	UPROPERTY(BlueprintAssignable)
+	FOnItemPickedUp OnItemPickedUpEvent;
 };

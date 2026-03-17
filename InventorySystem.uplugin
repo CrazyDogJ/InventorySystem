@@ -42,6 +42,10 @@
 		{
 			"Name": "ReplicatedFoliage",
 			"Enabled": true
+		},
+		{
+			"Name": "InputTips",
+			"Enabled": true
 		}
 	]
 }
