@@ -40,7 +40,7 @@ public:
 
 public:
 	// Sub-object Start ----------------------------------------
-	/** Change outer object and replicated sub-object. */
+	/** Change outer object and replicated sub-object. Call in authority. */
 	void ChangeOuter(UObject* NewOuter);
 	/** Add sub-object in current outer. */
 	void AddSubObject();

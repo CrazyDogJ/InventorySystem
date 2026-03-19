@@ -147,7 +147,13 @@ void AInventoryItemActor::CheckShouldRefresh()
 	{
 		if (const auto Ptr = Def->GetFragmentPtr<FItemFragment_ItemInstance>())
 		{
-			if (Ptr->ItemInstance->GetClass() != ItemEntry.ItemInstance->GetClass())
+			if (!ItemEntry.ItemInstance && Ptr->ItemInstance)
+			{
+				RefreshItemInstance();
+				return;
+			}
+			
+			if (Ptr->ItemInstance && Ptr->ItemInstance->GetClass() != ItemEntry.ItemInstance->GetClass())
 			{
 				RefreshItemInstance();
 				return;
@@ -178,4 +184,10 @@ void AInventoryItemActor::TransToRuntimeActor()
 }
 
 void AInventoryItemActor::OnRep_ItemEntry()
-{}
+{
+	// Client change outer here.
+	if (ItemEntry.ItemInstance)
+	{
+		ItemEntry.ItemInstance->Rename(nullptr, this);
+	}
+}

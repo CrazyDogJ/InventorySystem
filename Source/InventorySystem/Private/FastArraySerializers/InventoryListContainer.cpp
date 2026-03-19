@@ -22,11 +22,11 @@ bool FInventoryItemEntry::IsSlotEmpty() const
 	return ItemDefinition == nullptr && ItemStack == 0 && ItemInstance == nullptr;
 }
 
-void FInventoryItemEntry::EmptySlot()
+void FInventoryItemEntry::EmptySlot(const bool& bDestroyInstance)
 {
 	ItemDefinition = nullptr;
 	ItemStack = 0;
-	if (ItemInstance)
+	if (ItemInstance && bDestroyInstance)
 	{
 		ItemInstance->ConditionalBeginDestroy();
 	}
@@ -386,14 +386,14 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 		// End
 		if (AmountToMax >= ItemEntry.GetStackAmount())
 		{
-			ItemList[EmptyIndex] = ItemEntry;
+			ItemList[EmptyIndex].CopyFrom(ItemEntry);
 			if (ItemEntry.ItemInstance)
 			{
 				ItemEntry.ItemInstance->ChangeOuter(OuterObject);
 			}
 			DirtyIndices.Add(EmptyIndex);
 			MarkIndexDirty(DirtyIndices);
-			ItemEntry = FInventoryItemEntry();
+			ItemEntry.EmptySlot(false);
 			return true;
 		}
 
@@ -550,6 +550,15 @@ void FInventoryItemList::PreReplicatedRemove(const TArrayView<int32>& RemovedInd
 
 void FInventoryItemList::PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
 {
+	// Client change outer here.
+	for (const auto AddIndex : AddedIndices)
+	{
+		if (const auto ItemInstance = ItemList[AddIndex].ItemInstance)
+		{
+			ItemInstance->Rename(nullptr, OuterObject);
+		}
+	}
+	
 	TArray<int> Indices;
 	Indices.Append(AddedIndices);
 	OnItemListAdd.Broadcast(Indices);
@@ -557,6 +566,15 @@ void FInventoryItemList::PostReplicatedAdd(const TArrayView<int32>& AddedIndices
 
 void FInventoryItemList::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
 {
+	// Client change outer here.
+	for (const auto AddIndex : ChangedIndices)
+	{
+		if (const auto ItemInstance = ItemList[AddIndex].ItemInstance)
+		{
+			ItemInstance->Rename(nullptr, OuterObject);
+		}
+	}
+	
 	TArray<int> Indices;
 	Indices.Append(ChangedIndices);
 	OnItemListChange.Broadcast(Indices);

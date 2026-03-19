@@ -68,9 +68,16 @@ struct INVENTORYSYSTEM_API FInventoryItemEntry : public FFastArraySerializerItem
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UInventoryItemInstance* ItemInstance = nullptr;
+
+	void CopyFrom(const FInventoryItemEntry& Other)
+	{
+		ItemDefinition = Other.ItemDefinition;
+		ItemStack = Other.ItemStack;
+		ItemInstance = Other.ItemInstance;
+	}
 	
 	bool IsSlotEmpty() const;
-	void EmptySlot();
+	void EmptySlot(const bool& bDestroyInstance = true);
 	int GetStackAmount() const;
 	int GetMaxStackAmount() const;
 	bool CanEntryStack(const FInventoryItemEntry& OtherItemEntry) const;

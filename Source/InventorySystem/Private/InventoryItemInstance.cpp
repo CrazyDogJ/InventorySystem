@@ -20,7 +20,9 @@ void UInventoryItemInstance::ChangeOuter(UObject* NewOuter)
 	if (NewOuter != nullptr && GetOuter() != NewOuter)
 	{
 		RemoveSubObject();
-		Rename(nullptr, NewOuter);
+		const auto NewNameString = GetName();
+		const auto NewNamePtr = *NewNameString;
+		Rename(NewNamePtr, NewOuter);
 		AddSubObject();
 	}
 }
@@ -98,6 +100,7 @@ UInventoryItemInstance* UInventoryItemInstance::NewItemInstance(UObject* Outer, 
 	
 	const auto NewItemInstance = NewObject<UInventoryItemInstance>(Outer, TemplateInstance->GetClass(), NAME_None, RF_NoFlags, TemplateInstance);
 	NewItemInstance->ItemDefinition = InItemDefinition;
+	MARK_PROPERTY_DIRTY_FROM_NAME(UInventoryItemInstance, ItemDefinition, NewItemInstance);
 	if (const auto CurrentWorld = Outer->GetWorld(); CurrentWorld && CurrentWorld->IsGameWorld())
 	{
 		NewItemInstance->AddSubObject();
@@ -123,10 +126,19 @@ void UInventoryItemInstance::GetLifetimeReplicatedProps(TArray<class FLifetimePr
 	UBlueprintGeneratedClass* BPClass = Cast<UBlueprintGeneratedClass>(GetClass());
 	if (BPClass != NULL)
 	{
-		BPClass->GetLifetimeBlueprintReplicationList(OutLifetimeProps);
+		TArray<class FLifetimeProperty> BP_Props;
+		BPClass->GetLifetimeBlueprintReplicationList(BP_Props);
+		for (auto& Itr : BP_Props)
+		{
+			Itr.bIsPushBased = true;
+		}
+		
+		OutLifetimeProps.Append(BP_Props);
 	}
 	
-	DOREPLIFETIME(ThisClass, ItemDefinition);
+	FDoRepLifetimeParams Params;
+	Params.bIsPushBased = true;
+	DOREPLIFETIME_WITH_PARAMS(ThisClass, ItemDefinition, Params);
 }
 
 void UInventoryItemInstance::BeginDestroy()
