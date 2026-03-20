@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "FastArraySerializers/InventoryListContainer.h"
+#include "InventoryListContainer.h"
 #include "InventoryUserWidget.generated.h"
 
 class UInventorySubsystem;

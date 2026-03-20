@@ -182,7 +182,7 @@ bool UItemProcessor_Stackable::PickupItemObject(FInventoryItemList& ItemList, UO
 				// Trigger visual multicast.
 				if (const auto Container = Cast<UInventoryContainerComponent>(ItemList.OuterObject))
 				{
-					Container->OnItemPickupUpMulticast(CachedItemDef, CachedAmount - Entry.GetStackAmount());
+					Container->OnItemPickupUpClient(CachedItemDef, CachedAmount - Entry.GetStackAmount());
 				}
 			}
 		}

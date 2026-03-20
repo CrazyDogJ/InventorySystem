@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FastArraySerializers/InventoryListContainer.h"
+#include "InventoryListContainer.h"
 #include "UObject/Object.h"
 
 class INVENTORYSYSTEMEDITOR_API FItemEntryPropertyTypeCustomization : public IPropertyTypeCustomization

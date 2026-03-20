@@ -20,9 +20,7 @@ void UInventoryItemInstance::ChangeOuter(UObject* NewOuter)
 	if (NewOuter != nullptr && GetOuter() != NewOuter)
 	{
 		RemoveSubObject();
-		const auto NewNameString = GetName();
-		const auto NewNamePtr = *NewNameString;
-		Rename(NewNamePtr, NewOuter);
+		Rename(nullptr, NewOuter);
 		AddSubObject();
 	}
 }

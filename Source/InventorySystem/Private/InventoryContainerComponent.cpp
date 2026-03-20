@@ -18,7 +18,7 @@ UInventoryContainerComponent::UInventoryContainerComponent()
 	bReplicateUsingRegisteredSubObjectList = true;
 }
 
-void UInventoryContainerComponent::OnItemPickupUpMulticast_Implementation(const UInventoryItemDefinition* ItemDef,
+void UInventoryContainerComponent::OnItemPickupUpClient_Implementation(const UInventoryItemDefinition* ItemDef,
 	const int Amount)
 {
 	OnItemPickedUpEvent.Broadcast(ItemDef, Amount);

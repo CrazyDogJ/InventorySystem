@@ -3,7 +3,7 @@
 
 #include "InventorySaveGame.h"
 
-#include "FastArraySerializers/InventoryListContainer.h"
+#include "InventoryListContainer.h"
 #include "InventoryItemInstance.h"
 #include "InventoryItemDefinition.h"
 

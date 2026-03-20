@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "InventoryUtility.h"
-#include "FastArraySerializers/InventoryListContainer.h"
+#include "InventoryListContainer.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "InventorySystemLibrary.generated.h"
 

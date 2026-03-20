@@ -6,7 +6,7 @@
 #include "InventoryItemDefinition.h"
 #include "StreamingLevelSaveInterface.h"
 #include "Components/ActorComponent.h"
-#include "FastArraySerializers/InventoryListContainer.h"
+#include "InventoryListContainer.h"
 #include "InventoryContainerComponent.generated.h"
 
 class UStreamingLevelSaveComponent;
@@ -54,8 +54,8 @@ public:
 	UStreamingLevelSaveComponent* StreamingLevelSaveComponent;
 
 	/** Visual multicast event for item picked. */
-	UFUNCTION(NetMulticast, Unreliable)
-	void OnItemPickupUpMulticast(const UInventoryItemDefinition* ItemDef, const int Amount);
+	UFUNCTION(Client, Unreliable)
+	void OnItemPickupUpClient(const UInventoryItemDefinition* ItemDef, const int Amount);
 	
 	UPROPERTY(BlueprintAssignable)
 	FOnItemPickedUp OnItemPickedUpEvent;

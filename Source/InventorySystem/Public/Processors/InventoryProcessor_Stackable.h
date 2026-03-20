@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "InventoryItemInstance.h"
-#include "FastArraySerializers/InventoryListContainer.h"
+#include "InventoryListContainer.h"
 #include "InventoryProcessor_Stackable.generated.h"
 
 struct FInventoryItemList;

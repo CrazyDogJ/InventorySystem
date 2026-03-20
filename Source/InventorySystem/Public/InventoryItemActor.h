@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "InventoryEntryInterface.h"
 #include "StreamingLevelSaveInterface.h"
-#include "FastArraySerializers/InventoryListContainer.h"
+#include "InventoryListContainer.h"
 #include "GameFramework/Actor.h"
 #include "InventoryItemActor.generated.h"
 

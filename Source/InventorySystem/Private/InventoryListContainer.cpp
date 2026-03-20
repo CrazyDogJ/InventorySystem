@@ -1,6 +1,6 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "FastArraySerializers/InventoryListContainer.h"
+#include "InventoryListContainer.h"
 #include "InventoryItemDefinition.h"
 #include "Processors/InventoryProcessor_Stackable.h"
 
@@ -550,15 +550,6 @@ void FInventoryItemList::PreReplicatedRemove(const TArrayView<int32>& RemovedInd
 
 void FInventoryItemList::PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
 {
-	// Client change outer here.
-	for (const auto AddIndex : AddedIndices)
-	{
-		if (const auto ItemInstance = ItemList[AddIndex].ItemInstance)
-		{
-			ItemInstance->Rename(nullptr, OuterObject);
-		}
-	}
-	
 	TArray<int> Indices;
 	Indices.Append(AddedIndices);
 	OnItemListAdd.Broadcast(Indices);
@@ -566,15 +557,6 @@ void FInventoryItemList::PostReplicatedAdd(const TArrayView<int32>& AddedIndices
 
 void FInventoryItemList::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
 {
-	// Client change outer here.
-	for (const auto AddIndex : ChangedIndices)
-	{
-		if (const auto ItemInstance = ItemList[AddIndex].ItemInstance)
-		{
-			ItemInstance->Rename(nullptr, OuterObject);
-		}
-	}
-	
 	TArray<int> Indices;
 	Indices.Append(ChangedIndices);
 	OnItemListChange.Broadcast(Indices);
