@@ -34,7 +34,7 @@ void UInventoryContainerComponent::BeginPlay()
 {
 	// Init item list.
 	ItemList.OuterObject = this;
-	if (bShouldInit)
+	if (bShouldInit && GetOwner()->HasAuthority())
 	{
 		TArray<int32> AddIndices;
 		for (int i = 0; i < InitItemList.ItemList.Num(); ++i)
