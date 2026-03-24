@@ -31,6 +31,11 @@ int UInventorySystemLibrary::FindInstanceStructByType(TArray<FInstancedStruct> I
 	});
 }
 
+void UInventorySystemLibrary::MarkSingleIndexDirty(FInventoryItemList& ItemList, int Index)
+{
+	ItemList.MarkIndexDirty(Index);
+}
+
 void UInventorySystemLibrary::MarkIndexDirty(FInventoryItemList& ItemList, TArray<int> Indices)
 {
 	ItemList.MarkIndexDirty(Indices);

@@ -188,6 +188,11 @@ bool UItemProcessor_Abilities::TakeFromAbilitySystem(UInventoryItemInstance* InI
 bool UItemProcessor_Abilities::GiveToAbilitySystemHandles(UInventoryItemDefinition* ItemDefinition, FAbilitySet_GrantedHandles& InHandles,
 	UAbilitySystemComponent* ASC)
 {
+	if (!ItemDefinition)
+	{
+		return false;
+	}
+	
 	if (const auto AbilitiesSet = ItemDefinition->GetFragmentPtr<FItemFragment_Abilities>())
 	{
 		AbilitiesSet->GiveToAbilitySystem(ASC, InHandles, ASC);

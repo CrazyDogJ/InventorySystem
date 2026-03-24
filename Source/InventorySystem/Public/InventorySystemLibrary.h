@@ -34,6 +34,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Inventory Manage")
 	static void MarkIndexDirty(UPARAM(ref)FInventoryItemList& ItemList, TArray<int> Indices);
 	
+	UFUNCTION(BlueprintCallable, Category="Inventory System|Instanced Struct")
+	static void MarkSingleIndexDirty(FInventoryItemList& ItemList, int Index);
+	
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Inventory Manage")
 	static void AddEmptySlots(UPARAM(ref)FInventoryItemList& ItemList, int Amount);
 

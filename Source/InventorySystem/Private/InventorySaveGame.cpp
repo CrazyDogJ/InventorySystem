@@ -54,14 +54,12 @@ void FInventoryItemListSaveData::SaveList(const FInventoryItemList& InItemList)
 
 void FInventoryItemListSaveData::LoadList(FInventoryItemList& InItemList, UObject* OuterObject) const
 {
-	InItemList.Clear();
-	InItemList.AddEmptySlots(ItemsSaveData.Num());
+	// Set num.
+	InItemList.ItemList.SetNum(ItemsSaveData.Num());
 	TArray<int32> Indices;
 	for (int i = 0; i < ItemsSaveData.Num(); ++i)
 	{
 		ItemsSaveData[i].LoadEntry(InItemList.ItemList[i], OuterObject);
-		Indices.Add(i);
+		InItemList.MarkIndexDirty(i);
 	}
-
-	InItemList.MarkIndexDirty(Indices);
 }

@@ -133,12 +133,11 @@ void FInventoryItemList::EmptySlotByIndex(TArray<int32> Indices, bool bDirty)
 		if (ItemList.IsValidIndex(Index))
 		{
 			ItemList[Index].EmptySlot();
+			if (bDirty)
+			{
+				MarkIndexDirty(Index);
+			}
 		}
-	}
-	
-	if (bDirty)
-	{
-		MarkIndexDirty(Indices);
 	}
 }
 
@@ -189,6 +188,15 @@ void FInventoryItemList::RemoveSlots(TArray<int32> Indices)
 	ItemList.Shrink();
 	
 	MarkArrayDirty();
+}
+
+void FInventoryItemList::MarkIndexDirty(int32 Index)
+{
+	if (ItemList.IsValidIndex(Index))
+	{
+		MarkItemDirty(ItemList[Index]);
+		OnItemListChange.Broadcast({Index});
+	}
 }
 
 void FInventoryItemList::MarkIndexDirty(TArray<int32> Indices)
@@ -303,7 +311,7 @@ bool FInventoryItemList::RemoveStackAtIndex(const int& Index, const int& Amount,
 	}
 
 	ItemList[Index].RemoveStack(Amount);
-	MarkIndexDirty({Index});
+	MarkIndexDirty(Index);
 	return true;
 }
 
@@ -336,30 +344,26 @@ int FInventoryItemList::RemoveItemByDefinition(const UInventoryItemDefinition* I
 				{
 					ItemList[i].ItemStack -= LocalAmount;
 				}
+				MarkIndexDirty(i);
 				break;
 			}
 			
 			if (ItemList[i].GetStackAmount() == LocalAmount)
 			{
-				EmptyIndex.Add(i);
-				DirtyIndex.Add(i);
+				EmptySlotByIndex({i});
 				break;
 			}
 			
-			EmptyIndex.Add(i);
-			DirtyIndex.Add(i);
+			EmptySlotByIndex({i});
 			LocalAmount -= ItemList[i].GetStackAmount();
 		}
 	}
-
-	EmptySlotByIndex(EmptyIndex);
-	MarkIndexDirty(DirtyIndex);
+	
 	return LocalAmount;
 }
 
 bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 {
-	TArray<int32> DirtyIndices;
 	if (ItemEntry.IsSlotEmpty()) return false;
 
 	// 1. Stack
@@ -367,7 +371,7 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 	while (StackIndex >= 0)
 	{
 		const auto StackResult = ItemList[StackIndex].StackEntry(ItemEntry);
-		MarkIndexDirty({StackIndex});
+		MarkIndexDirty(StackIndex);
 		if (StackResult)
 		{
 			return true;
@@ -391,8 +395,7 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 			{
 				ItemEntry.ItemInstance->ChangeOuter(OuterObject);
 			}
-			DirtyIndices.Add(EmptyIndex);
-			MarkIndexDirty(DirtyIndices);
+			MarkIndexDirty(EmptyIndex);
 			ItemEntry.EmptySlot(false);
 			return true;
 		}
@@ -419,13 +422,12 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 		}
 		
 		// Instance
-		DirtyIndices.Add(EmptyIndex);
+		MarkIndexDirty(EmptyIndex);
 		
 		// Find empty again.
 		EmptyIndex = FindFirstEmptySlot();
 	}
-
-	MarkIndexDirty(DirtyIndices);
+	
 	return false;
 }
 
@@ -469,15 +471,15 @@ bool FInventoryItemList::DragDropItem(int DragIndex, FInventoryItemList& DropIte
 			DragItemInstance->ChangeOuter(DropItemList.OuterObject);
 		}
 		
-		MarkIndexDirty({DragIndex});
-		DropItemList.MarkIndexDirty({DropIndex});
+		MarkIndexDirty(DragIndex);
+		DropItemList.MarkIndexDirty(DropIndex);
 		return true;
 	}
 
 	// 2. Is the same definition
 	DropItemList.ItemList[DropIndex].StackEntry(ItemList[DragIndex]);
-	MarkIndexDirty({DragIndex});
-	DropItemList.MarkIndexDirty({DropIndex});
+	MarkIndexDirty(DragIndex);
+	DropItemList.MarkIndexDirty(DropIndex);
 	return true;
 }
 
@@ -487,7 +489,7 @@ bool FInventoryItemList::QuickMoveItem(int FromIndex, FInventoryItemList& ToItem
 	{
 		if (ToItemList.AddItem(ItemList[FromIndex]))
 		{
-			MarkIndexDirty({FromIndex});
+			MarkIndexDirty(FromIndex);
 			return true;
 		}
 	}
@@ -533,8 +535,8 @@ bool FInventoryItemList::SplitItem(int SplitIndex, int SplitAmount, FInventoryIt
 			ItemList[SplitIndex].ItemStack -= SplitAmount;
 		}
 			
-		MarkIndexDirty({SplitIndex});
-		ContainerToSplit.MarkIndexDirty({FoundEmptyIndex});
+		MarkIndexDirty(SplitIndex);
+		ContainerToSplit.MarkIndexDirty(FoundEmptyIndex);
 		return true;
 	}
 	

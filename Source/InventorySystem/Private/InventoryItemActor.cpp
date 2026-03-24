@@ -75,15 +75,23 @@ void AInventoryItemActor::BeginPlay()
 	}
 }
 
+void AInventoryItemActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (ItemEntry.ItemInstance && ItemEntry.ItemInstance->bTickable)
+	{
+		ItemEntry.ItemInstance->Tick(DeltaSeconds);
+	}
+}
+
 void AInventoryItemActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 
-	// Remove item instance for streaming level. Otherwise, will cause crash when back to world.
-	if (ItemEntry.ItemInstance)
+	if (HasAuthority())
 	{
-		RemoveReplicatedSubObject(ItemEntry.ItemInstance);
-		ItemEntry.ItemInstance = nullptr;
+		ItemEntry.EmptySlot(true);
 	}
 }
 

@@ -68,16 +68,6 @@ void UInventoryItemInstance::LoadSaveData(const TArray<uint8>& InSaveData)
 	}
 }
 
-class UWorld* UInventoryItemInstance::GetWorld() const
-{
-	if (const auto OuterWorld = GetOuter()->GetWorld())
-	{
-		return OuterWorld;
-	}
-	
-	return UObject::GetWorld();
-}
-
 UInventoryItemInstance* UInventoryItemInstance::NewItemInstance(UObject* Outer, UInventoryItemDefinition* InItemDefinition)
 {
 	if (!InItemDefinition || !Outer) return nullptr;
@@ -152,34 +142,6 @@ void UInventoryItemInstance::BeginDestroy()
 void UInventoryItemInstance::Tick(float DeltaTime)
 {
 	OnTick(DeltaTime);
-}
-
-bool UInventoryItemInstance::IsTickable() const
-{
-	if (this->IsDefaultSubobject())
-	{
-		return false;
-	}
-
-	if (!IsValid(this))
-	{
-		return false;
-	}
-	
-	if (!GetOuter())
-	{
-		return false;
-	}
-	
-	if (const auto World = GetWorld())
-	{
-		if (World->IsGameWorld())
-		{
-			return bTickable;
-		}
-	}
-	
-	return false;
 }
 
 int32 UInventoryItemInstance::GetFunctionCallspace(UFunction* Function, FFrame* Stack)

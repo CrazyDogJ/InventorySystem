@@ -15,7 +15,7 @@ class UInventoryItemDefinition;
  * Inventory item instance
  */
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
-class INVENTORYSYSTEM_API UInventoryItemInstance : public UObject, public FTickableGameObject
+class INVENTORYSYSTEM_API UInventoryItemInstance : public UObject
 {
 	GENERATED_BODY()
 
@@ -51,18 +51,15 @@ public:
 	void GetSaveData(TArray<uint8>& OutSaveData);
 	void LoadSaveData(const TArray<uint8>& InSaveData);
 
+	virtual void Tick(float DeltaTime);
+	
 protected:
-	virtual class UWorld* GetWorld() const override;
 #if WITH_EDITOR
 	virtual bool ImplementsGetWorld() const override { return true; }
 #endif
 	virtual bool IsSupportedForNetworking() const override { return true; }
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void BeginDestroy() override;
-
-	virtual void Tick(float DeltaTime) override;
-	virtual bool IsTickable() const override;
-	virtual TStatId GetStatId() const override { RETURN_QUICK_DECLARE_CYCLE_STAT(UInventoryItemInstance, STATGROUP_Tickables); }
 	
 	virtual int32 GetFunctionCallspace(UFunction* Function, FFrame* Stack) override;
 	virtual bool CallRemoteFunction(UFunction* Function, void* Parms, struct FOutParmRec* OutParms, FFrame* Stack) override;

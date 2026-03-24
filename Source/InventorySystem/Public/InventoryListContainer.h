@@ -99,10 +99,12 @@ struct INVENTORYSYSTEM_API FInventoryItemList : public FFastArraySerializer
 	
 	// Empty the slot. If you want to dirty by your self, please set bDirty to false.
 	void EmptySlotByIndex(TArray<int32> Indices, bool bDirty = true);
+	// Use it carefully !!!
 	void Clear();
 	
 	void AddEmptySlots(const int32 AddAmount);
 	void RemoveSlots(TArray<int32> Indices);
+	void MarkIndexDirty(int32 Index);
 	void MarkIndexDirty(TArray<int32> Indices);
 
 	bool IsSlotEmpty(int Index, bool& Empty) const;

@@ -36,7 +36,6 @@ void UInventoryContainerComponent::BeginPlay()
 	ItemList.OuterObject = this;
 	if (bShouldInit && GetOwner()->HasAuthority())
 	{
-		TArray<int32> AddIndices;
 		for (int i = 0; i < InitItemList.ItemList.Num(); ++i)
 		{
 			ItemList.ItemList.Add(InitItemList.ItemList[i]);
@@ -45,9 +44,9 @@ void UInventoryContainerComponent::BeginPlay()
 			{
 				ItemInstance->ChangeOuter(this);
 			}
-			AddIndices.Add(i);
+			ItemList.MarkIndexDirty(i);
 		}
-		ItemList.MarkIndexDirty(AddIndices);
+		
 	}
 	
 	if (bAutoStreamingSave && UStreamingLevelSaveLibrary::IsRuntimeObject(GetOwner()) && GetOwner()->HasAuthority() && !StreamingLevelSaveComponent)
@@ -57,6 +56,20 @@ void UInventoryContainerComponent::BeginPlay()
 	}
 	
 	Super::BeginPlay();
+}
+
+void UInventoryContainerComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
+	FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	for (const auto Itr : ItemList.ItemList)
+	{
+		if (Itr.ItemInstance && Itr.ItemInstance->bTickable)
+		{
+			Itr.ItemInstance->Tick(DeltaTime);
+		}
+	}
 }
 
 FInstancedStruct UInventoryContainerComponent::GetSaveData_Implementation()
