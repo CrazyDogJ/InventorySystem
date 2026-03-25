@@ -155,6 +155,10 @@ AInventoryItemActor* UInventorySystemLibrary::DropItemActor(const UObject* World
 	if (ItemEntry.IsSlotEmpty()) return nullptr;
 	if (!ItemEntry.ItemDefinition->ItemActorDesc.IsValid()) return nullptr;
 	const auto Ptr = ItemEntry.ItemDefinition->ItemActorDesc.GetPtr<>();
+	if (!Ptr->bCanDrop)
+	{
+		return nullptr;
+	}
 	const auto ActorClass = Ptr->GetItemActorClass();
 
 	const auto World = WorldContextObject->GetWorld();

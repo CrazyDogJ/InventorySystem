@@ -258,7 +258,7 @@ int FInventoryItemList::GetItemTotalAmountByDefinition(const UInventoryItemDefin
 	
 	for (auto Itr : ItemList)
 	{
-		if (!Itr.IsSlotEmpty() && Itr.ItemInstance->ItemDefinition == ItemDef)
+		if (!Itr.IsSlotEmpty())
 		{
 			Result += Itr.GetStackAmount();
 		}

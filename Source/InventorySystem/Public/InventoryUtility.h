@@ -22,6 +22,9 @@ struct FItemActorDescBase
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FVector Scale = FVector::OneVector;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bCanDrop = true;
 	
 	virtual ~FItemActorDescBase() = default;
 	
