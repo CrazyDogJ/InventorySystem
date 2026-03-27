@@ -37,6 +37,9 @@ protected:
 	
 public:
 	UInventoryContainerComponent();
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory System|Container Component")
+	bool bShouldTickItem = false;
 	
 	/** Init item list, usually used for specific item container game design. */
 	UPROPERTY(BlueprintReadWrite, Replicated, VisibleAnywhere, Transient, Category = "Inventory System|Container Component")
@@ -57,6 +60,9 @@ public:
 	/** Visual multicast event for item picked. */
 	UFUNCTION(Client, Unreliable)
 	void OnItemPickupUpClient(const UInventoryItemDefinition* ItemDef, const int Amount);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+	void ResetInventoryList();
 	
 	UPROPERTY(BlueprintAssignable)
 	FOnItemPickedUp OnItemPickedUpEvent;

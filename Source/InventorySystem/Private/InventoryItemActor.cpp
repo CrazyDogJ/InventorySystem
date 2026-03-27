@@ -79,7 +79,7 @@ void AInventoryItemActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	if (ItemEntry.ItemInstance && ItemEntry.ItemInstance->bTickable)
+	if (bShouldTickItem && ItemEntry.ItemInstance && ItemEntry.ItemInstance->bTickable)
 	{
 		ItemEntry.ItemInstance->Tick(DeltaSeconds);
 	}

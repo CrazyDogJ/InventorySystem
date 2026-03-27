@@ -18,8 +18,23 @@ UInventoryContainerComponent::UInventoryContainerComponent()
 	bReplicateUsingRegisteredSubObjectList = true;
 }
 
+void UInventoryContainerComponent::ResetInventoryList()
+{
+	if (bShouldInit)
+	{
+		for (int i = 0; i < InitItemList.ItemList.Num(); ++i)
+		{
+			if (ItemList.ItemList.IsValidIndex(i))
+			{
+				ItemList.ItemList[i].CopyFrom(InitItemList.ItemList[i]);
+				ItemList.MarkIndexDirty(i);
+			}
+		}
+	}
+}
+
 void UInventoryContainerComponent::OnItemPickupUpClient_Implementation(const UInventoryItemDefinition* ItemDef,
-	const int Amount)
+                                                                       const int Amount)
 {
 	OnItemPickedUpEvent.Broadcast(ItemDef, Amount);
 }
@@ -63,11 +78,14 @@ void UInventoryContainerComponent::TickComponent(float DeltaTime, enum ELevelTic
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	for (const auto Itr : ItemList.ItemList)
+	if (bShouldTickItem)
 	{
-		if (Itr.ItemInstance && Itr.ItemInstance->bTickable)
+		for (const auto Itr : ItemList.ItemList)
 		{
-			Itr.ItemInstance->Tick(DeltaTime);
+			if (Itr.ItemInstance && Itr.ItemInstance->bTickable)
+			{
+				Itr.ItemInstance->Tick(DeltaTime);
+			}
 		}
 	}
 }

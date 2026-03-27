@@ -38,6 +38,9 @@ protected:
 	// Inventory Entry Interface
 public:
 	AInventoryItemActor();
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory System|Container Component")
+	bool bShouldTickItem = false;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, ReplicatedUsing = OnRep_ItemEntry, Category = "Inventory System|Item Actor")
 	FInventoryItemEntry ItemEntry;
