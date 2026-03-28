@@ -31,14 +31,14 @@ int UInventorySystemLibrary::FindInstanceStructByType(TArray<FInstancedStruct> I
 	});
 }
 
-void UInventorySystemLibrary::MarkSingleIndexDirty(FInventoryItemList& ItemList, int Index)
+void UInventorySystemLibrary::MarkSingleIndexDirty(FInventoryItemList& ItemList, const int Index)
 {
-	ItemList.MarkIndexDirty(Index);
+	ItemList.MarkIndexChange(Index);
 }
 
-void UInventorySystemLibrary::MarkIndexDirty(FInventoryItemList& ItemList, TArray<int> Indices)
+void UInventorySystemLibrary::MarkIndexDirty(FInventoryItemList& ItemList, const TArray<int> Indices)
 {
-	ItemList.MarkIndexDirty(Indices);
+	ItemList.MarkIndexChange(Indices);
 }
 
 void UInventorySystemLibrary::AddEmptySlots(FInventoryItemList& ItemList, int Amount)

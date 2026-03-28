@@ -10,6 +10,7 @@
 #include "StreamingLevelSaveComponent.h"
 #include "StreamingLevelSaveLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "Processors/InventoryProcessor_Stackable.h"
 
 UInventoryContainerComponent::UInventoryContainerComponent()
 {
@@ -26,8 +27,10 @@ void UInventoryContainerComponent::ResetInventoryList()
 		{
 			if (ItemList.ItemList.IsValidIndex(i))
 			{
+				// Remove all items in item list.
+				ItemList.EmptySlotByIndex({i}, false);
 				ItemList.ItemList[i].CopyFrom(InitItemList.ItemList[i]);
-				ItemList.MarkIndexDirty(i);
+				ItemList.MarkIndexChange(i);
 			}
 		}
 	}
@@ -59,7 +62,7 @@ void UInventoryContainerComponent::BeginPlay()
 			{
 				ItemInstance->ChangeOuter(this);
 			}
-			ItemList.MarkIndexDirty(i);
+			ItemList.MarkIndexAdd(i);
 		}
 		
 	}
@@ -105,3 +108,36 @@ void UInventoryContainerComponent::LoadSaveData_Implementation(const FInstancedS
 		UE_LOG(LogInventorySystem, Log, TEXT("Loading save data for container : %s"), *GetName())
 	}
 }
+
+#if WITH_EDITOR
+
+void UInventoryContainerComponent::PostEditChangeChainProperty(struct FPropertyChangedChainEvent& PropertyChangedEvent)
+{
+	if (PropertyChangedEvent.Property->GetFName() == GET_MEMBER_NAME_CHECKED(FInventoryItemEntry, ItemStack))
+	{
+		const int32 Index = PropertyChangedEvent.GetArrayIndex(TEXT("ItemList"));
+		if (InitItemList.ItemList.IsValidIndex(Index))
+		{
+			auto& ItemEntry = InitItemList.ItemList[Index];
+			if (ItemEntry.ItemDefinition)
+			{
+				const auto InstanceFrag = ItemEntry.ItemDefinition->GetFragmentPtr<FItemFragment_ItemInstance>();
+				if (InstanceFrag && InstanceFrag->ItemInstance->Implements<UStackableItem>())
+				{
+					ItemEntry.ItemStack = 1;
+					return;
+				}
+
+				if (const auto Stackable = ItemEntry.ItemDefinition->GetFragmentPtr<FItemFragment_Stackable>())
+				{
+					ItemEntry.ItemStack = FMath::Clamp(ItemEntry.ItemStack, 1, Stackable->MaxStackAmount);
+					return;
+				}
+			}
+		}
+	}
+	
+	Super::PostEditChangeChainProperty(PropertyChangedEvent);
+}
+
+#endif

@@ -135,7 +135,7 @@ void FInventoryItemList::EmptySlotByIndex(TArray<int32> Indices, bool bDirty)
 			ItemList[Index].EmptySlot();
 			if (bDirty)
 			{
-				MarkIndexDirty(Index);
+				MarkIndexChange(Index);
 			}
 		}
 	}
@@ -190,7 +190,49 @@ void FInventoryItemList::RemoveSlots(TArray<int32> Indices)
 	MarkArrayDirty();
 }
 
-void FInventoryItemList::MarkIndexDirty(int32 Index)
+void FInventoryItemList::MarkIndexAdd(int32 Index)
+{
+	if (ItemList.IsValidIndex(Index))
+	{
+		MarkItemDirty(ItemList[Index]);
+		OnItemListAdd.Broadcast({Index});
+	}
+}
+
+void FInventoryItemList::MarkIndexAdd(TArray<int32> Indices)
+{
+	TArray<int32> ChangedIndices;
+	for (const auto Index : Indices)
+	{
+		if (ItemList.IsValidIndex(Index))
+		{
+			ChangedIndices.Add(Index);
+			MarkItemDirty(ItemList[Index]);
+		}
+	}
+
+	OnItemListAdd.Broadcast(ChangedIndices);
+}
+
+void FInventoryItemList::MarkIndexRemove(int32 Index)
+{
+	if (ItemList.IsValidIndex(Index))
+	{
+		MarkArrayDirty();
+		OnItemListRemove.Broadcast({Index});
+	}
+}
+
+void FInventoryItemList::MarkIndexRemove(TArray<int32> Indices)
+{
+	if (Indices.Num() > 0)
+	{
+		MarkArrayDirty();
+		OnItemListRemove.Broadcast(Indices);
+	}
+}
+
+void FInventoryItemList::MarkIndexChange(int32 Index)
 {
 	if (ItemList.IsValidIndex(Index))
 	{
@@ -199,7 +241,7 @@ void FInventoryItemList::MarkIndexDirty(int32 Index)
 	}
 }
 
-void FInventoryItemList::MarkIndexDirty(TArray<int32> Indices)
+void FInventoryItemList::MarkIndexChange(TArray<int32> Indices)
 {
 	TArray<int32> ChangedIndices;
 	for (const auto Index : Indices)
@@ -311,7 +353,7 @@ bool FInventoryItemList::RemoveStackAtIndex(const int& Index, const int& Amount,
 	}
 
 	ItemList[Index].RemoveStack(Amount);
-	MarkIndexDirty(Index);
+	MarkIndexChange(Index);
 	return true;
 }
 
@@ -344,7 +386,7 @@ int FInventoryItemList::RemoveItemByDefinition(const UInventoryItemDefinition* I
 				{
 					ItemList[i].ItemStack -= LocalAmount;
 				}
-				MarkIndexDirty(i);
+				MarkIndexChange(i);
 				break;
 			}
 			
@@ -371,7 +413,7 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 	while (StackIndex >= 0)
 	{
 		const auto StackResult = ItemList[StackIndex].StackEntry(ItemEntry);
-		MarkIndexDirty(StackIndex);
+		MarkIndexChange(StackIndex);
 		if (StackResult)
 		{
 			return true;
@@ -395,7 +437,7 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 			{
 				ItemEntry.ItemInstance->ChangeOuter(OuterObject);
 			}
-			MarkIndexDirty(EmptyIndex);
+			MarkIndexChange(EmptyIndex);
 			ItemEntry.EmptySlot(false);
 			return true;
 		}
@@ -422,7 +464,7 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 		}
 		
 		// Instance
-		MarkIndexDirty(EmptyIndex);
+		MarkIndexChange(EmptyIndex);
 		
 		// Find empty again.
 		EmptyIndex = FindFirstEmptySlot();
@@ -471,15 +513,15 @@ bool FInventoryItemList::DragDropItem(int DragIndex, FInventoryItemList& DropIte
 			DragItemInstance->ChangeOuter(DropItemList.OuterObject);
 		}
 		
-		MarkIndexDirty(DragIndex);
-		DropItemList.MarkIndexDirty(DropIndex);
+		MarkIndexChange(DragIndex);
+		DropItemList.MarkIndexChange(DropIndex);
 		return true;
 	}
 
 	// 2. Is the same definition
 	DropItemList.ItemList[DropIndex].StackEntry(ItemList[DragIndex]);
-	MarkIndexDirty(DragIndex);
-	DropItemList.MarkIndexDirty(DropIndex);
+	MarkIndexChange(DragIndex);
+	DropItemList.MarkIndexChange(DropIndex);
 	return true;
 }
 
@@ -489,7 +531,7 @@ bool FInventoryItemList::QuickMoveItem(int FromIndex, FInventoryItemList& ToItem
 	{
 		if (ToItemList.AddItem(ItemList[FromIndex]))
 		{
-			MarkIndexDirty(FromIndex);
+			MarkIndexChange(FromIndex);
 			return true;
 		}
 	}
@@ -535,8 +577,8 @@ bool FInventoryItemList::SplitItem(int SplitIndex, int SplitAmount, FInventoryIt
 			ItemList[SplitIndex].ItemStack -= SplitAmount;
 		}
 			
-		MarkIndexDirty(SplitIndex);
-		ContainerToSplit.MarkIndexDirty(FoundEmptyIndex);
+		MarkIndexChange(SplitIndex);
+		ContainerToSplit.MarkIndexChange(FoundEmptyIndex);
 		return true;
 	}
 	

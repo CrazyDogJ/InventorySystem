@@ -175,6 +175,30 @@ void AInventoryItemActor::OnItemDefPropertyChanged(const FPropertyChangedEvent& 
 	CheckShouldRefresh();
 }
 
+void AInventoryItemActor::PostEditChangeChainProperty(struct FPropertyChangedChainEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeChainProperty(PropertyChangedEvent);
+	
+	if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(ThisClass, ItemEntry) &&
+		PropertyChangedEvent.Property->GetFName() == GET_MEMBER_NAME_CHECKED(FInventoryItemEntry, ItemStack))
+	{
+		if (ItemEntry.ItemDefinition)
+		{
+			const auto InstanceFrag = ItemEntry.ItemDefinition->GetFragmentPtr<FItemFragment_ItemInstance>();
+			if (InstanceFrag && InstanceFrag->ItemInstance->Implements<UStackableItem>())
+			{
+				ItemEntry.ItemStack = 1;
+				return;
+			}
+
+			if (const auto Stackable = ItemEntry.ItemDefinition->GetFragmentPtr<FItemFragment_Stackable>())
+			{
+				ItemEntry.ItemStack = FMath::Clamp(ItemEntry.ItemStack, 1, Stackable->MaxStackAmount);
+			}
+		}
+	}
+}
+
 #endif
 
 void AInventoryItemActor::TransToRuntimeActor()

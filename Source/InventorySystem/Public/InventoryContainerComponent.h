@@ -34,6 +34,10 @@ protected:
 	virtual FInstancedStruct GetSaveData_Implementation() override;
 	virtual void LoadSaveData_Implementation(const FInstancedStruct& SaveData) override;
 	// Streaming Level Save Interface End --------------------
+
+#if WITH_EDITOR
+	virtual void PostEditChangeChainProperty(struct FPropertyChangedChainEvent& PropertyChangedEvent) override;
+#endif
 	
 public:
 	UInventoryContainerComponent();
@@ -61,6 +65,7 @@ public:
 	UFUNCTION(Client, Unreliable)
 	void OnItemPickupUpClient(const UInventoryItemDefinition* ItemDef, const int Amount);
 
+	// Usually used in refreshable item container.
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
 	void ResetInventoryList();
 	

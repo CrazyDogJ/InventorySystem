@@ -55,11 +55,29 @@ void FInventoryItemListSaveData::SaveList(const FInventoryItemList& InItemList)
 void FInventoryItemListSaveData::LoadList(FInventoryItemList& InItemList, UObject* OuterObject) const
 {
 	// Set num.
-	InItemList.ItemList.SetNum(ItemsSaveData.Num());
-	TArray<int32> Indices;
+	const auto SaveDataNum = ItemsSaveData.Num();
+	// If item list is more than save data num.
+	if (InItemList.ItemList.Num() > SaveDataNum)
+	{
+		for (int i = InItemList.ItemList.Num() - 1; i >= SaveDataNum; --i)
+		{
+			InItemList.ItemList.RemoveAt(i);
+			InItemList.MarkIndexRemove(i);
+		}
+	}
+	
 	for (int i = 0; i < ItemsSaveData.Num(); ++i)
 	{
-		ItemsSaveData[i].LoadEntry(InItemList.ItemList[i], OuterObject);
-		InItemList.MarkIndexDirty(i);
+		if (InItemList.ItemList.IsValidIndex(i))
+		{
+			ItemsSaveData[i].LoadEntry(InItemList.ItemList[i], OuterObject);
+			InItemList.MarkIndexChange(i);
+		}
+		else
+		{
+			InItemList.ItemList.Add(FInventoryItemEntry());
+			ItemsSaveData[i].LoadEntry(InItemList.ItemList[i], OuterObject);
+			InItemList.MarkIndexAdd(i);
+		}
 	}
 }

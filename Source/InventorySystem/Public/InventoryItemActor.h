@@ -55,6 +55,8 @@ public:
 
 	void CheckShouldRefresh();
 	void OnItemDefPropertyChanged(const FPropertyChangedEvent& PropertyChangedEvent);
+
+	virtual void PostEditChangeChainProperty(struct FPropertyChangedChainEvent& PropertyChangedEvent) override;
 #endif
 	
 	void TransToRuntimeActor();

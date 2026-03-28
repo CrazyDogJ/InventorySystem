@@ -104,8 +104,12 @@ struct INVENTORYSYSTEM_API FInventoryItemList : public FFastArraySerializer
 	
 	void AddEmptySlots(const int32 AddAmount);
 	void RemoveSlots(TArray<int32> Indices);
-	void MarkIndexDirty(int32 Index);
-	void MarkIndexDirty(TArray<int32> Indices);
+	void MarkIndexAdd(int32 Index);
+	void MarkIndexAdd(TArray<int32> Indices);
+	void MarkIndexRemove(int32 Index);
+	void MarkIndexRemove(TArray<int32> Indices);
+	void MarkIndexChange(int32 Index);
+	void MarkIndexChange(TArray<int32> Indices);
 
 	bool IsSlotEmpty(int Index, bool& Empty) const;
 	int FindFirstEmptySlot() const;
