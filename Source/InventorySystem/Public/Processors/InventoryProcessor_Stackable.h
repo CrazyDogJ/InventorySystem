@@ -29,7 +29,7 @@ protected:
 	virtual bool CanStack_Implementation(const UInventoryItemInstance* ItemInstance) const override;
 	virtual bool StackItemInstance_Implementation(UInventoryItemInstance*& ItemInstance, int Amount = -1) override;
 	virtual int RemoveStack_Implementation(int InAmount) override;
-	virtual int GetMaxStackAmount_Implementation() const override;
+	virtual void SetStack_Implementation(int InAmount) override;
 	// Stack item interface end ---
 };
 
@@ -57,10 +57,13 @@ public:
 	static bool IsStackableItem(const UInventoryItemInstance* ItemInstance);
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
-	static int GetDefaultMaxStackAmount(UInventoryItemDefinition* ItemDef);
+	static int GetDefaultMaxStackAmount(const UInventoryItemDefinition* ItemDef);
 	
 	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
 	static int GetEntryStackAmount(const FInventoryItemEntry& ItemEntry);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
+	static void SetEntryStackAmount(UPARAM(ref) FInventoryItemEntry& ItemEntry, int Amount);
 
 	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
 	static int GetEntryMaxStackAmount(const FInventoryItemEntry& ItemEntry);
@@ -86,6 +89,15 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
 	static bool RemoveStackAtIndex(UPARAM(ref)FInventoryItemList& ItemList, int Index, int Amount, bool bForceRemove);
+
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
+	static bool CanListRemoveItems(const FInventoryItemList& InItemList, const FItemStackMapping& InItems);
+
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
+	static bool CanListAddItems(const FInventoryItemList& InItemList, const FItemStackMapping& InItems);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
+	static bool AddItemByDefinition(UPARAM(ref)FInventoryItemList& ItemList, UInventoryItemDefinition* ItemDef, int Amount);
 	
 	// Return remain amount.
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")

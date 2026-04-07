@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InventoryItemDefinition.h"
 #include "InventoryUtility.h"
 #include "Net/Serialization/FastArraySerializer.h"
 #include "StructUtils/InstancedStruct.h"
@@ -41,15 +42,24 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
 	int RemoveStack(int InAmount);
 	virtual int RemoveStack_Implementation(int InAmount) { return InAmount; }
-	
+
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	int GetMaxStackAmount() const;
-	virtual int GetMaxStackAmount_Implementation() const { return 1; }
+	void SetStack(int InAmount);
+	virtual void SetStack_Implementation(int InAmount) { }
 };
 
 /////////////////////////////////////
 /// Inventory Item List Container ///
 /////////////////////////////////////
+
+USTRUCT(BlueprintType)
+struct FItemStackMapping
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TMap<UInventoryItemDefinition*, int> Items;
+};
 
 /** Item list entry. Will be common used in most situation. */
 USTRUCT(BlueprintType)
@@ -79,6 +89,7 @@ struct INVENTORYSYSTEM_API FInventoryItemEntry : public FFastArraySerializerItem
 	bool IsSlotEmpty() const;
 	void EmptySlot(const bool& bDestroyInstance = true);
 	int GetStackAmount() const;
+	void SetStackAmount(const int& InStackAmount);
 	int GetMaxStackAmount() const;
 	bool CanEntryStack(const FInventoryItemEntry& OtherItemEntry) const;
 	bool StackEntry(FInventoryItemEntry& OtherEntry, int SpecificAmount = INDEX_NONE);
@@ -118,9 +129,12 @@ struct INVENTORYSYSTEM_API FInventoryItemList : public FFastArraySerializer
 	UInventoryItemDefinition* GetItemDefinition(const int& Index) const;
 	UInventoryItemInstance* GetItemInstance(const int& Index) const;
 	bool CanSlotSplit(const int& SlotIndex) const;
+	bool CanRemoveItems(const FItemStackMapping& InItems) const;
+	bool CanAddItems(const FItemStackMapping& InItems) const;
 
 	bool RemoveStackAtIndex(const int& Index, const int& Amount, const bool& bForceRemove = false);
 	int RemoveItemByDefinition(const UInventoryItemDefinition* ItemDef, const int& Amount, const bool& bForceRemove = false);
+	bool AddItemByDefinition(UInventoryItemDefinition* ItemDef, const int& Amount);
 	bool AddItem(FInventoryItemEntry& ItemEntry);
 	bool DragDropItem(int DragIndex, FInventoryItemList& DropItemList, int DropIndex);
 	bool QuickMoveItem(int FromIndex, FInventoryItemList& ToItemList);

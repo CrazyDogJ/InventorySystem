@@ -44,14 +44,19 @@ int FInventoryItemEntry::GetStackAmount() const
 	return ItemStack;
 }
 
-int FInventoryItemEntry::GetMaxStackAmount() const
+void FInventoryItemEntry::SetStackAmount(const int& InStackAmount)
 {
 	// Interface
 	if (UItemProcessor_Stackable::IsStackableItem(ItemInstance))
 	{
-		return IStackableItem::Execute_GetMaxStackAmount(ItemInstance);
+		return IStackableItem::Execute_SetStack(ItemInstance, InStackAmount);
 	}
 	// Default
+	ItemStack = InStackAmount;
+}
+
+int FInventoryItemEntry::GetMaxStackAmount() const
+{
 	return UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition);
 }
 
@@ -339,6 +344,72 @@ bool FInventoryItemList::CanSlotSplit(const int& SlotIndex) const
 	return false;
 }
 
+bool FInventoryItemList::CanRemoveItems(const FItemStackMapping& InItems) const
+{
+	// Not empty.
+	if (InItems.Items.IsEmpty())
+	{
+		return false;
+	}
+	
+	for (const auto Map : InItems.Items)
+	{
+		if (GetItemTotalAmountByDefinition(Map.Key) < Map.Value)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool FInventoryItemList::CanAddItems(const FItemStackMapping& InItems) const
+{
+	// Input invalid.
+	if (InItems.Items.Num() == 0)
+	{
+		return false;
+	}
+	
+	// Copy list for calculation.
+	TArray<FInventoryItemEntry> CopyItemList = ItemList;
+
+	auto CopyInItems = InItems.Items;
+	
+	// init stack amount.
+	for (auto& Itr : CopyItemList)
+	{
+		const UInventoryItemDefinition* LocalItemDef = nullptr;
+		if (Itr.IsSlotEmpty())
+		{
+			TArray<UInventoryItemDefinition*> Keys;
+			CopyInItems.GenerateKeyArray(Keys);
+			LocalItemDef = Keys[0];
+		}
+		else
+		{
+			LocalItemDef = Itr.ItemDefinition;
+		}
+		
+		if (const auto FoundPtr = CopyInItems.Find(LocalItemDef))
+		{
+			auto& StackAmount = *FoundPtr;
+			StackAmount -= UItemProcessor_Stackable::GetDefaultMaxStackAmount(LocalItemDef) - Itr.GetStackAmount();
+			if (StackAmount <= 0)
+			{
+				CopyInItems.Remove(LocalItemDef);
+				// Try end loop.
+				if (CopyInItems.Num() == 0)
+				{
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 bool FInventoryItemList::RemoveStackAtIndex(const int& Index, const int& Amount, const bool& bForceRemove)
 {
 	if (!ItemList.IsValidIndex(Index)) return false;
@@ -402,6 +473,13 @@ int FInventoryItemList::RemoveItemByDefinition(const UInventoryItemDefinition* I
 	}
 	
 	return LocalAmount;
+}
+
+bool FInventoryItemList::AddItemByDefinition(UInventoryItemDefinition* ItemDef, const int& Amount)
+{
+	auto NewEntry = FInventoryItemEntry(OuterObject, ItemDef);
+	NewEntry.SetStackAmount(Amount);
+	return AddItem(NewEntry);
 }
 
 bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)

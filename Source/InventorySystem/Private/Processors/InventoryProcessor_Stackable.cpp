@@ -16,7 +16,7 @@ void UItemInstance_Stackable::PostEditChangeProperty(struct FPropertyChangedEven
 
 	if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(ThisClass, StackAmount))
 	{
-		StackAmount = FMath::Clamp(StackAmount, 1, Execute_GetMaxStackAmount(this));
+		StackAmount = FMath::Clamp(StackAmount, 1, UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition));
 	}
 }
 #endif
@@ -27,7 +27,7 @@ bool UItemInstance_Stackable::CanStack_Implementation(const UInventoryItemInstan
 	{
 		if (ItemDefinition == ItemInstance->ItemDefinition)
 		{
-			const auto MaxStackAmount = Execute_GetMaxStackAmount(this);
+			const auto MaxStackAmount = UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition);
 			return StackAmount < MaxStackAmount;
 		}
 	}
@@ -52,7 +52,7 @@ bool UItemInstance_Stackable::StackItemInstance_Implementation(UInventoryItemIns
 		return false;
 	}
 	
-	const auto MaxStackAmount = Execute_GetMaxStackAmount(this);
+	const auto MaxStackAmount = UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition);
 	const auto InItemStackAmount = UItemProcessor_Stackable::IsStackableItem(ItemInstance) ? Execute_GetStackAmount(ItemInstance) : 1;
 	const auto CachedStackAmount = StackAmount;
 	// Custom stack in amount.
@@ -89,14 +89,9 @@ int UItemInstance_Stackable::RemoveStack_Implementation(int InAmount)
 	return StackAmount;
 }
 
-int UItemInstance_Stackable::GetMaxStackAmount_Implementation() const
+void UItemInstance_Stackable::SetStack_Implementation(int InAmount)
 {
-	if (ItemDefinition)
-	{
-		return UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition);
-	}
-	
-	return IStackableItem::GetMaxStackAmount_Implementation();
+	StackAmount = InAmount;
 }
 
 void UItemInstance_Stackable::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -121,6 +116,11 @@ int UItemProcessor_Stackable::GetEntryStackAmount(const FInventoryItemEntry& Ite
 	return ItemEntry.GetStackAmount();
 }
 
+void UItemProcessor_Stackable::SetEntryStackAmount(FInventoryItemEntry& ItemEntry, const int Amount)
+{
+	ItemEntry.SetStackAmount(Amount);
+}
+
 int UItemProcessor_Stackable::GetEntryMaxStackAmount(const FInventoryItemEntry& ItemEntry)
 {
 	return ItemEntry.GetMaxStackAmount();
@@ -137,7 +137,7 @@ int UItemProcessor_Stackable::FindFirstStackableSlot(const FInventoryItemList& I
 	return ItemList.FindFirstStackableSlot(ItemEntry);
 }
 
-int UItemProcessor_Stackable::GetDefaultMaxStackAmount(UInventoryItemDefinition* ItemDef)
+int UItemProcessor_Stackable::GetDefaultMaxStackAmount(const UInventoryItemDefinition* ItemDef)
 {
 	if (!ItemDef) return INDEX_NONE;
 
@@ -197,9 +197,26 @@ int UItemProcessor_Stackable::GetItemTotalAmountByDefinition(const FInventoryIte
 	return ItemList.GetItemTotalAmountByDefinition(ItemDef);
 }
 
-bool UItemProcessor_Stackable::RemoveStackAtIndex(FInventoryItemList& ItemList, int Index, int Amount, bool bForceRemove)
+bool UItemProcessor_Stackable::RemoveStackAtIndex(FInventoryItemList& ItemList, const int Index, const int Amount, const bool bForceRemove)
 {
-	return ItemList.RemoveStackAtIndex(Index, Amount,bForceRemove);
+	return ItemList.RemoveStackAtIndex(Index, Amount, bForceRemove);
+}
+
+bool UItemProcessor_Stackable::CanListRemoveItems(const FInventoryItemList& InItemList,
+	const FItemStackMapping& InItems)
+{
+	return InItemList.CanRemoveItems(InItems);
+}
+
+bool UItemProcessor_Stackable::CanListAddItems(const FInventoryItemList& InItemList, const FItemStackMapping& InItems)
+{
+	return InItemList.CanAddItems(InItems);
+}
+
+bool UItemProcessor_Stackable::AddItemByDefinition(FInventoryItemList& ItemList, UInventoryItemDefinition* ItemDef,
+	const int Amount)
+{
+	return ItemList.AddItemByDefinition(ItemDef, Amount);
 }
 
 int UItemProcessor_Stackable::RemoveItemByDefinition(FInventoryItemList& ItemList, UInventoryItemDefinition* ItemDef,
