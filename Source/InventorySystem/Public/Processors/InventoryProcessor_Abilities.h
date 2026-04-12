@@ -20,15 +20,15 @@ struct INVENTORYSYSTEM_API FAbilitySet_GameplayAbility
 	GENERATED_BODY()
 	
 	// Gameplay ability to grant.
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	TSubclassOf<UGameplayAbility> Ability = nullptr;
 
 	// Level of ability to grant.
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	int32 AbilityLevel = 1;
 
 	// Tag used to process input for the ability.
-	UPROPERTY(EditDefaultsOnly, Meta = (Categories = "InputTag"))
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Meta = (Categories = "InputTag"))
 	FGameplayTag InputTag;
 };
 
@@ -38,11 +38,11 @@ struct INVENTORYSYSTEM_API FAbilitySet_GameplayEffect
 	GENERATED_BODY()
 	
 	// Gameplay effect to grant.
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	TSubclassOf<UGameplayEffect> GameplayEffect = nullptr;
 
 	// Level of gameplay effect to grant.
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	float EffectLevel = 1.0f;
 };
 
@@ -52,7 +52,7 @@ struct INVENTORYSYSTEM_API FAbilitySet_AttributeSet
 	GENERATED_BODY()
 	
 	// Gameplay effect to grant.
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	TSubclassOf<UAttributeSet> AttributeSet;
 
 };
@@ -71,15 +71,15 @@ public:
 
 protected:
 	// Handles to the granted abilities.
-	UPROPERTY(NotReplicated)
+	UPROPERTY(BlueprintReadOnly, NotReplicated)
 	TArray<FGameplayAbilitySpecHandle> AbilitySpecHandles;
 
 	// Handles to the granted gameplay effects.
-	UPROPERTY(NotReplicated)
+	UPROPERTY(BlueprintReadOnly, NotReplicated)
 	TArray<FActiveGameplayEffectHandle> GameplayEffectHandles;
 
 	// Pointers to the granted attribute sets
-	UPROPERTY(NotReplicated)
+	UPROPERTY(BlueprintReadOnly, NotReplicated)
 	TArray<TObjectPtr<UAttributeSet>> GrantedAttributeSets;
 };
 
@@ -133,14 +133,17 @@ class UItemProcessor_Abilities : public UBlueprintFunctionLibrary
 public:
 	static bool IsAbilityItem(const UInventoryItemInstance* InItemInstance);
 	
-	UFUNCTION(BlueprintCallable, Category = "Inventory System|Abilities", BlueprintAuthorityOnly)
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Abilities", BlueprintAuthorityOnly, DisplayName = "Give To Ability System by Item Instance")
 	static bool GiveToAbilitySystem(UInventoryItemInstance* InItemInstance, UAbilitySystemComponent* ASC);
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Abilities", BlueprintAuthorityOnly)
 	static bool TakeFromAbilitySystem(UInventoryItemInstance* InItemInstance, UAbilitySystemComponent* ASC);
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory System|Abilities", BlueprintAuthorityOnly)
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Abilities", BlueprintAuthorityOnly, DisplayName = "Give To Ability System by Definition")
 	static bool GiveToAbilitySystemHandles(UInventoryItemDefinition* ItemDefinition, UPARAM(ref)FAbilitySet_GrantedHandles& InHandles, UAbilitySystemComponent* ASC);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Abilities", BlueprintAuthorityOnly, DisplayName = "Give To Ability System by Struct")
+	static void GiveToAbilitySystemStruct(const FItemFragment_Abilities& InAbilities, UPARAM(ref)FAbilitySet_GrantedHandles& InHandles, UAbilitySystemComponent* ASC);
 	
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Abilities", BlueprintAuthorityOnly)
 	static bool TakeFromAbilitySystemHandles(UPARAM(ref)FAbilitySet_GrantedHandles& InHandles, UAbilitySystemComponent* ASC);

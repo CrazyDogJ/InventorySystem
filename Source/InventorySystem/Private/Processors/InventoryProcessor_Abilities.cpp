@@ -202,8 +202,14 @@ bool UItemProcessor_Abilities::GiveToAbilitySystemHandles(UInventoryItemDefiniti
 	return false;
 }
 
+void UItemProcessor_Abilities::GiveToAbilitySystemStruct(const FItemFragment_Abilities& InAbilities,
+	FAbilitySet_GrantedHandles& InHandles, UAbilitySystemComponent* ASC)
+{
+	InAbilities.GiveToAbilitySystem(ASC, InHandles, ASC);
+}
+
 bool UItemProcessor_Abilities::TakeFromAbilitySystemHandles(FAbilitySet_GrantedHandles& InHandles,
-	UAbilitySystemComponent* ASC)
+                                                            UAbilitySystemComponent* ASC)
 {
 	if (!ASC)
 	{
