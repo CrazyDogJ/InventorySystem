@@ -81,6 +81,12 @@ int UInventorySystemLibrary::FindFirstEmptySlot(const FInventoryItemList& ItemLi
 	return ItemList.FindFirstEmptySlot();
 }
 
+int UInventorySystemLibrary::FindFirstValidEmptySlot(const FInventoryItemList& ItemList,
+	const UInventoryItemDefinition* ItemDefinition)
+{
+	return ItemList.FindFirstEmptySlot(ItemDefinition);
+}
+
 void UInventorySystemLibrary::AssignItemAddEvent(FInventoryItemList& ItemList,
                                                  FOnFastArraySerializerStaticEvent AddEvent)
 {
@@ -173,6 +179,21 @@ AInventoryItemActor* UInventorySystemLibrary::DropItemActor(const UObject* World
 	NewItemActor->FinishSpawning(ActorTransform);
 	
 	return NewItemActor;
+}
+
+bool UInventorySystemLibrary::IsItemAllowed(const FInventoryItemEntry& Entry, const UInventoryItemDefinition* ItemDef)
+{
+	return Entry.IsItemAllowed(ItemDef);
+}
+
+void UInventorySystemLibrary::SetItemSlotFilter(FInventoryItemList& ItemList, int32 Index,
+                                                const FItemSlotFilter& Filter)
+{
+	if (ItemList.ItemList.IsValidIndex(Index))
+	{
+		ItemList.ItemList[Index].SetItemSlotFilter(Filter);
+		ItemList.MarkIndexChange(Index);
+	}
 }
 
 /**

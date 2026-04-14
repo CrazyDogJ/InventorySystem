@@ -61,6 +61,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Inventory Manage")
 	static int FindFirstEmptySlot(const FInventoryItemList& ItemList);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Inventory Manage")
+	static int FindFirstValidEmptySlot(const FInventoryItemList& ItemList, const UInventoryItemDefinition* ItemDefinition);
 	
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Item List Events")
 	static void AssignItemAddEvent(UPARAM(ref)FInventoryItemList& ItemList, FOnFastArraySerializerStaticEvent AddEvent);
@@ -83,6 +86,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Inventory Manage", meta=(WorldContext = "WorldContextObject"))
 	static AInventoryItemActor* DropItemActor(const UObject* WorldContextObject, const FTransform& ActorTransform, const FInventoryItemEntry& ItemEntry);
+
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Inventory Manage")
+	static bool IsItemAllowed(const FInventoryItemEntry& Entry, const UInventoryItemDefinition* ItemDef);
+	
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Inventory Manage")
+	static void SetItemSlotFilter(UPARAM(ref)FInventoryItemList& ItemList, int32 Index, const FItemSlotFilter& Filter);
 	
 /**
 	UFUNCTION(BlueprintPure, Category = "Inventory System|Container Component")

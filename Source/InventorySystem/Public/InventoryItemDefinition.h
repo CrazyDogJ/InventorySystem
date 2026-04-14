@@ -33,6 +33,10 @@ public:
 	/** Item display description, localization key associate with item id. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Base Info")
 	FText ItemDisplayDescription;
+
+	/** Item tag for filter. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Base Info")
+	FGameplayTag ItemGameplayTag;
 	
 	/** Determine what default properties the item has. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta=(ExcludeBaseStruct), Category = "Storage Info")

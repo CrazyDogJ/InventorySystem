@@ -79,6 +79,9 @@ struct INVENTORYSYSTEM_API FInventoryItemEntry : public FFastArraySerializerItem
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UInventoryItemInstance* ItemInstance = nullptr;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FItemSlotFilter ItemSlotFilter;
+	
 	void CopyFrom(const FInventoryItemEntry& Other)
 	{
 		ItemDefinition = Other.ItemDefinition;
@@ -86,6 +89,8 @@ struct INVENTORYSYSTEM_API FInventoryItemEntry : public FFastArraySerializerItem
 		ItemInstance = Other.ItemInstance;
 	}
 	
+	void SetItemSlotFilter(const FItemSlotFilter& Filter);
+	bool IsItemAllowed(const UInventoryItemDefinition* ItemDef) const;
 	bool IsSlotEmpty() const;
 	void EmptySlot(const bool& bDestroyInstance = true);
 	int GetStackAmount() const;
@@ -123,7 +128,7 @@ struct INVENTORYSYSTEM_API FInventoryItemList : public FFastArraySerializer
 	void MarkIndexChange(TArray<int32> Indices);
 
 	bool IsSlotEmpty(int Index, bool& Empty) const;
-	int FindFirstEmptySlot() const;
+	int FindFirstEmptySlot(const UInventoryItemDefinition* ItemDefinition = nullptr) const;
 	int FindFirstStackableSlot(const FInventoryItemEntry& OtherItemEntry) const;
 	int GetItemTotalAmountByDefinition(const UInventoryItemDefinition* ItemDef) const;
 	UInventoryItemDefinition* GetItemDefinition(const int& Index) const;

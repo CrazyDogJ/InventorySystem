@@ -17,6 +17,16 @@ FInventoryItemEntry::FInventoryItemEntry(UObject* OuterObject, UInventoryItemDef
 	}
 }
 
+void FInventoryItemEntry::SetItemSlotFilter(const FItemSlotFilter& Filter)
+{
+	ItemSlotFilter = Filter;
+}
+
+bool FInventoryItemEntry::IsItemAllowed(const UInventoryItemDefinition* ItemDef) const
+{
+	return ItemSlotFilter.IsItemAllowed(ItemDef);
+}
+
 bool FInventoryItemEntry::IsSlotEmpty() const
 {
 	return ItemDefinition == nullptr && ItemStack == 0 && ItemInstance == nullptr;
@@ -57,6 +67,11 @@ void FInventoryItemEntry::SetStackAmount(const int& InStackAmount)
 
 int FInventoryItemEntry::GetMaxStackAmount() const
 {
+	if (ItemSlotFilter.bOnlyOne)
+	{
+		return 1;
+	}
+	
 	return UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition);
 }
 
@@ -77,7 +92,7 @@ bool FInventoryItemEntry::CanEntryStack(const FInventoryItemEntry& OtherItemEntr
 		return IStackableItem::Execute_CanStack(ItemInstance, OtherItemEntry.ItemInstance);
 	}
 	// Default
-	const auto DefaultMaxStack = UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition);
+	const auto DefaultMaxStack = GetMaxStackAmount();
 	const auto ToMax = DefaultMaxStack - ItemStack;
 	return ToMax >= 1;
 }
@@ -89,7 +104,7 @@ bool FInventoryItemEntry::StackEntry(FInventoryItemEntry& OtherEntry, int Specif
 		return IStackableItem::Execute_StackItemInstance(ItemInstance, OtherEntry.ItemInstance, SpecificAmount);
 	}
 
-	const auto MaxStackAmount = UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition);
+	const auto MaxStackAmount = GetMaxStackAmount();
 	const auto InItemStackAmount = OtherEntry.ItemStack;
 	const auto CachedStackAmount = ItemStack;
 	// Custom stack in amount.
@@ -272,13 +287,23 @@ bool FInventoryItemList::IsSlotEmpty(int Index, bool& Empty) const
 	return false;
 }
 
-int FInventoryItemList::FindFirstEmptySlot() const
+int FInventoryItemList::FindFirstEmptySlot(const UInventoryItemDefinition* ItemDefinition) const
 {
 	for (int i = 0; i < ItemList.Num(); ++i)
 	{
 		if (ItemList[i].IsSlotEmpty())
 		{
-			return i;
+			if (ItemDefinition)
+			{
+				if (ItemList[i].IsItemAllowed(ItemDefinition))
+				{
+					return i;
+				}
+			}
+			else
+			{
+				return i;
+			}
 		}
 	}
 	
@@ -379,7 +404,7 @@ bool FInventoryItemList::CanAddItems(const FItemStackMapping& InItems) const
 	// init stack amount.
 	for (auto& Itr : CopyItemList)
 	{
-		const UInventoryItemDefinition* LocalItemDef = nullptr;
+		const UInventoryItemDefinition* LocalItemDef;
 		if (Itr.IsSlotEmpty())
 		{
 			TArray<UInventoryItemDefinition*> Keys;
@@ -394,7 +419,7 @@ bool FInventoryItemList::CanAddItems(const FItemStackMapping& InItems) const
 		if (const auto FoundPtr = CopyInItems.Find(LocalItemDef))
 		{
 			auto& StackAmount = *FoundPtr;
-			StackAmount -= UItemProcessor_Stackable::GetDefaultMaxStackAmount(LocalItemDef) - Itr.GetStackAmount();
+			StackAmount -= Itr.GetMaxStackAmount() - Itr.GetStackAmount();
 			if (StackAmount <= 0)
 			{
 				CopyInItems.Remove(LocalItemDef);
@@ -502,7 +527,7 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 	}
 
 	// 2. Empty
-	int EmptyIndex = FindFirstEmptySlot();
+	int EmptyIndex = FindFirstEmptySlot(ItemEntry.ItemDefinition);
 	while (EmptyIndex >= 0)
 	{
 		const auto AmountToMax = ItemEntry.GetMaxStackAmount();
@@ -545,7 +570,7 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 		MarkIndexChange(EmptyIndex);
 		
 		// Find empty again.
-		EmptyIndex = FindFirstEmptySlot();
+		EmptyIndex = FindFirstEmptySlot(ItemEntry.ItemDefinition);
 	}
 	
 	return false;
@@ -559,6 +584,15 @@ bool FInventoryItemList::DragDropItem(int DragIndex, FInventoryItemList& DropIte
 		!ItemList.IsValidIndex(DragIndex) ||
 		ItemList[DragIndex].IsSlotEmpty()) return false;
 
+	// Slot filter.
+	if (DropItemList.ItemList[DropIndex].IsSlotEmpty())
+	{
+		if (!DropItemList.ItemList[DropIndex].IsItemAllowed(ItemList[DragIndex].ItemDefinition))
+		{
+			return false;
+		}
+	}
+	
 	const auto DragItemInstance = ItemList[DragIndex].ItemInstance;
 	const auto DropItemInstance = DropItemList.ItemList[DropIndex].ItemInstance;
 	
@@ -632,7 +666,7 @@ bool FInventoryItemList::SplitItem(int SplitIndex, int SplitAmount, FInventoryIt
 		return false;
 	}
 
-	const auto FoundEmptyIndex = FindFirstEmptySlot();
+	const auto FoundEmptyIndex = ContainerToSplit.FindFirstEmptySlot(ItemList[SplitIndex].ItemDefinition);
 	if (FoundEmptyIndex >= 0)
 	{
 		ContainerToSplit.ItemList[FoundEmptyIndex].ItemDefinition = ItemList[SplitIndex].ItemDefinition;

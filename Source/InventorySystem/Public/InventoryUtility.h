@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "InventoryUtility.generated.h"
 
 class AInventoryItemActor;
@@ -30,4 +31,22 @@ public:
 	
 	virtual bool IsDataValid() const { return false; }
 	virtual TSubclassOf<AInventoryItemActor> GetItemActorClass() const;
+};
+
+/** Item slot entry filter. */
+USTRUCT(BlueprintType)
+struct FItemSlotFilter
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<UInventoryItemDefinition*> AllowedItems;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FGameplayTagContainer AllowedItemTags;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bOnlyOne = false;
+
+	bool IsItemAllowed(const UInventoryItemDefinition* Item) const;
 };
