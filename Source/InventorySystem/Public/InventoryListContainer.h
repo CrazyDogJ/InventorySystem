@@ -12,54 +12,9 @@
 
 class UInventoryItemDefinition;
 
-////////////////////////////////
-/// Stackable Item Interface ///
-////////////////////////////////
-
-UINTERFACE(MinimalAPI)
-class UStackableItem : public UInterface
-{
-	GENERATED_BODY()
-};
-
-class INVENTORYSYSTEM_API IStackableItem
-{
-	GENERATED_BODY()
-
-public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	int GetStackAmount() const;
-	virtual int GetStackAmount_Implementation() const { return 1; }
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	bool CanStack(const UInventoryItemInstance* ItemInstance) const;
-	virtual bool CanStack_Implementation(const UInventoryItemInstance* ItemInstance) const { return false; }
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	bool StackItemInstance(UInventoryItemInstance*& ItemInstance, int Amount = -1);
-	virtual bool StackItemInstance_Implementation(UInventoryItemInstance*& ItemInstance, int Amount = -1) { return false; }
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	int RemoveStack(int InAmount);
-	virtual int RemoveStack_Implementation(int InAmount) { return InAmount; }
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Inventory System|Stackable")
-	void SetStack(int InAmount);
-	virtual void SetStack_Implementation(int InAmount) { }
-};
-
 /////////////////////////////////////
 /// Inventory Item List Container ///
 /////////////////////////////////////
-
-USTRUCT(BlueprintType)
-struct FItemStackMapping
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TMap<UInventoryItemDefinition*, int> Items;
-};
 
 /** Item list entry. Will be common used in most situation. */
 USTRUCT(BlueprintType)
@@ -68,37 +23,30 @@ struct INVENTORYSYSTEM_API FInventoryItemEntry : public FFastArraySerializerItem
 	GENERATED_BODY()
 
 	FInventoryItemEntry() {}
-	FInventoryItemEntry(UObject* OuterObject, UInventoryItemDefinition* InItemDefinition);
+	FInventoryItemEntry(UObject* OuterObject, UInventoryItemDefinition* InItemDefinition, const FItemSlotFilter& InItemSlotFilter = FItemSlotFilter());
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UInventoryItemDefinition* ItemDefinition = nullptr;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int ItemStack = 0;
-	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	UInventoryItemInstance* ItemInstance = nullptr;
+	FInstancedStruct ItemSlotData;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FItemSlotFilter ItemSlotFilter;
 	
-	void CopyFrom(const FInventoryItemEntry& Other)
-	{
-		ItemDefinition = Other.ItemDefinition;
-		ItemStack = Other.ItemStack;
-		ItemInstance = Other.ItemInstance;
-	}
-	
+	void CopyFrom(const FInventoryItemEntry& Other, const bool bCopyFilter = false);
 	void SetItemSlotFilter(const FItemSlotFilter& Filter);
 	bool IsItemAllowed(const UInventoryItemDefinition* ItemDef) const;
 	bool IsSlotEmpty() const;
-	void EmptySlot(const bool& bDestroyInstance = true);
+	void EmptySlot(const bool& bCallEmptyLogic = true, const bool& bClearFilter = false);
 	int GetStackAmount() const;
 	void SetStackAmount(const int& InStackAmount);
 	int GetMaxStackAmount() const;
 	bool CanEntryStack(const FInventoryItemEntry& OtherItemEntry) const;
 	bool StackEntry(FInventoryItemEntry& OtherEntry, int SpecificAmount = INDEX_NONE);
 	void RemoveStack(int SpecificAmount = 1);
+
+	TObjectPtr<UInventoryItemInstance> TryGetItemInstance() const;
 };
 
 /** Container for fast array inventory item entries. */
@@ -130,12 +78,17 @@ struct INVENTORYSYSTEM_API FInventoryItemList : public FFastArraySerializer
 	bool IsSlotEmpty(int Index, bool& Empty) const;
 	int FindFirstEmptySlot(const UInventoryItemDefinition* ItemDefinition = nullptr) const;
 	int FindFirstStackableSlot(const FInventoryItemEntry& OtherItemEntry) const;
+	int GetItemTotalAmountByDefinition(const TSoftObjectPtr<UInventoryItemDefinition>& ItemDefinitionSoft) const;
 	int GetItemTotalAmountByDefinition(const UInventoryItemDefinition* ItemDef) const;
 	UInventoryItemDefinition* GetItemDefinition(const int& Index) const;
 	UInventoryItemInstance* GetItemInstance(const int& Index) const;
 	bool CanSlotSplit(const int& SlotIndex) const;
+	
+	FItemStackMapping GetItemMappings() const;
 	bool CanRemoveItems(const FItemStackMapping& InItems) const;
 	bool CanAddItems(const FItemStackMapping& InItems) const;
+	bool CanExchangeItems(const FItemStackMapping& RemoveItems, const FItemStackMapping& AddItems) const;
+	bool ExchangeItems(const FItemStackMapping& RemoveItems, const FItemStackMapping& AddItems);
 
 	bool RemoveStackAtIndex(const int& Index, const int& Amount, const bool& bForceRemove = false);
 	int RemoveItemByDefinition(const UInventoryItemDefinition* ItemDef, const int& Amount, const bool& bForceRemove = false);

@@ -22,18 +22,19 @@ FInventoryItemList& UInventoryUserWidget::GetItemList() const
 	return *ItemListPtr;
 }
 
-void UInventoryUserWidget::GetCurrentItemEntry(FInventoryItemEntry& OutItemEntry) const
+bool UInventoryUserWidget::GetCurrentItemEntry(FInventoryItemEntry& OutItemEntry) const
 {
 	if (ItemListPtr)
 	{
 		if (ItemListPtr->ItemList.IsValidIndex(Index))
 		{
 			OutItemEntry = ItemListPtr->ItemList[Index];
-			return;
+			return true;
 		}
 	}
 
 	OutItemEntry = OverrideItemEntry;
+	return false;
 }
 
 void UInventoryUserWidget::ManageDelegates(const bool& bManage)

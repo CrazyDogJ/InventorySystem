@@ -3,14 +3,9 @@
 
 #include "InventoryContainerComponent.h"
 
-#include "InventoryItemInstance.h"
-#include "InventorySaveGame.h"
-#include "InventorySystem.h"
-#include "InventorySystemLibrary.h"
-#include "StreamingLevelSaveComponent.h"
-#include "StreamingLevelSaveLibrary.h"
+#include "AbilitySystemGlobals.h"
+#include "InventorySlotData.h"
 #include "Net/UnrealNetwork.h"
-#include "Processors/InventoryProcessor_Stackable.h"
 
 UInventoryContainerComponent::UInventoryContainerComponent()
 {
@@ -36,6 +31,40 @@ void UInventoryContainerComponent::ResetInventoryList()
 	}
 }
 
+void UInventoryContainerComponent::ExecuteItemAction(const int Index, const int ActionIndex, UInventoryContainerComponent* OtherContainer)
+{
+	if (const auto ItemDef = ItemList.GetItemDefinition(Index))
+	{
+		if (const auto Actions = ItemDef->GetFragmentPtr<FItemFragment_ItemActions>())
+		{
+			if (Actions->ItemActions.IsValidIndex(ActionIndex))
+			{
+				const auto ItemAction = Actions->ItemActions[ActionIndex];
+				if (const auto ActionInstance = ItemAction.ActionInstance)
+				{
+					auto Asc = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(GetOwner());
+					const auto Context = FInventoryItemActionContext(this, Index, OtherContainer, Asc);
+					ActionInstance->OnActionExecute(Context);
+					
+					if (!ItemAction.bLocalAction && !GetOwner()->HasAuthority())
+					{
+						ExecuteItemAction_Server(ActionInstance, Context);
+					}
+				}
+			}
+		}
+	}
+}
+
+void UInventoryContainerComponent::ExecuteItemAction_Server_Implementation(UInventoryItemAction* ItemAction,
+                                                                           const FInventoryItemActionContext& Context)
+{
+	if (ItemAction)
+	{
+		ItemAction->OnActionExecute(Context);
+	}
+}
+
 void UInventoryContainerComponent::OnItemPickupUpClient_Implementation(const UInventoryItemDefinition* ItemDef,
                                                                        const int Amount)
 {
@@ -58,19 +87,15 @@ void UInventoryContainerComponent::BeginPlay()
 		{
 			ItemList.ItemList.Add(InitItemList.ItemList[i]);
 			// Item instance.
-			if (const auto ItemInstance = ItemList.ItemList[i].ItemInstance)
+			if (ItemList.ItemList[i].ItemDefinition)
 			{
-				ItemInstance->ChangeOuter(this);
+				if (const auto CDO = ItemList.ItemList[i].ItemDefinition->GetSlotDataDefinitionCDO())
+				{
+					CDO->PostBeginPlay(ItemList.ItemList[i], this);
+				}
 			}
 			ItemList.MarkIndexAdd(i);
 		}
-		
-	}
-	
-	if (bAutoStreamingSave && UStreamingLevelSaveLibrary::IsRuntimeObject(GetOwner()) && GetOwner()->HasAuthority() && !StreamingLevelSaveComponent)
-	{
-		const auto NewComponent = GetOwner()->AddComponentByClass(UStreamingLevelSaveComponent::StaticClass(), false, FTransform(), false);
-		StreamingLevelSaveComponent = Cast<UStreamingLevelSaveComponent>(NewComponent);
 	}
 	
 	Super::BeginPlay();
@@ -83,29 +108,16 @@ void UInventoryContainerComponent::TickComponent(float DeltaTime, enum ELevelTic
 
 	if (bShouldTickItem)
 	{
-		for (const auto Itr : ItemList.ItemList)
+		for (auto& Itr : ItemList.ItemList)
 		{
-			if (Itr.ItemInstance && Itr.ItemInstance->bTickable)
+			if (Itr.ItemDefinition)
 			{
-				Itr.ItemInstance->Tick(DeltaTime);
+				if (const auto CDO = Itr.ItemDefinition->GetSlotDataDefinitionCDO())
+				{
+					CDO->TickItemEntry(Itr, DeltaTime);
+				}
 			}
 		}
-	}
-}
-
-FInstancedStruct UInventoryContainerComponent::GetSaveData_Implementation()
-{
-	FInventoryItemListSaveData SaveData;
-	SaveData.SaveList(ItemList);
-	return FInstancedStruct::Make(SaveData);
-}
-
-void UInventoryContainerComponent::LoadSaveData_Implementation(const FInstancedStruct& SaveData)
-{
-	if (const auto Ptr = SaveData.GetPtr<FInventoryItemListSaveData>())
-	{
-		Ptr->LoadList(ItemList, this);
-		UE_LOG(LogInventorySystem, Log, TEXT("Loading save data for container : %s"), *GetName())
 	}
 }
 
@@ -113,26 +125,15 @@ void UInventoryContainerComponent::LoadSaveData_Implementation(const FInstancedS
 
 void UInventoryContainerComponent::PostEditChangeChainProperty(struct FPropertyChangedChainEvent& PropertyChangedEvent)
 {
-	if (PropertyChangedEvent.Property->GetFName() == GET_MEMBER_NAME_CHECKED(FInventoryItemEntry, ItemStack))
+	const int32 Index = PropertyChangedEvent.GetArrayIndex(TEXT("ItemList"));
+	if (InitItemList.ItemList.IsValidIndex(Index))
 	{
-		const int32 Index = PropertyChangedEvent.GetArrayIndex(TEXT("ItemList"));
-		if (InitItemList.ItemList.IsValidIndex(Index))
+		auto& ItemEntry = InitItemList.ItemList[Index];
+		if (ItemEntry.ItemDefinition)
 		{
-			auto& ItemEntry = InitItemList.ItemList[Index];
-			if (ItemEntry.ItemDefinition)
+			if (const auto CDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
 			{
-				const auto InstanceFrag = ItemEntry.ItemDefinition->GetFragmentPtr<FItemFragment_ItemInstance>();
-				if (InstanceFrag && InstanceFrag->ItemInstance->Implements<UStackableItem>())
-				{
-					ItemEntry.ItemStack = 1;
-					return;
-				}
-
-				if (const auto Stackable = ItemEntry.ItemDefinition->GetFragmentPtr<FItemFragment_Stackable>())
-				{
-					ItemEntry.ItemStack = FMath::Clamp(ItemEntry.ItemStack, 1, Stackable->MaxStackAmount);
-					return;
-				}
+				CDO->ValidateStackAmount(ItemEntry);
 			}
 		}
 	}

@@ -3,8 +3,8 @@
 #include "Actors/ItemActor_StaticMesh.h"
 
 #include "InventoryItemDefinition.h"
-#include "StreamingLevelSaveComponent.h"
-#include "StreamingLevelSaveLibrary.h"
+#include "InventorySystemSettings.h"
+#include "Components/StaticMeshComponent.h"
 
 AItemActor_StaticMesh::AItemActor_StaticMesh()
 {
@@ -53,16 +53,25 @@ void AItemActor_StaticMesh::OnRep_ItemEntry()
 				RootStaticMeshComponent->SetStaticMesh(Desc->StaticMesh);
 				SetActorScale3D(Desc->Scale);
 			}
+
+			// Override material.
+			const auto Mats = Desc->OverrideMaterials;
+			if (!Mats.IsEmpty())
+			{
+				for (int i = 0; i < Mats.Num(); ++i)
+				{
+					if (const auto Mat = Mats[i])
+					{
+						RootStaticMeshComponent->SetMaterial(i, Mat);
+					}
+				}
+			}
 			
 			RootStaticMeshComponent->SetMassOverrideInKg(NAME_None, Desc->MassOverrideInKg, Desc->bShouldOverrideMass);
 			RootStaticMeshComponent->SetCollisionObjectType(Desc->CollisionChannel);
 			RootStaticMeshComponent->SetCollisionResponseToChannels(Desc->MeshCollisionResponseContainer);
 			const bool SimulatePhysics = Desc->bSimulatePhysics && !Desc->bLockPhysicsOnStart;
 			RootStaticMeshComponent->SetSimulatePhysics(SimulatePhysics);
-			if (LevelSaveComponent)
-			{
-				LevelSaveComponent->bTickCheckCell = SimulatePhysics;
-			}
 			RegisterWakeEvents(Desc->bSimulatePhysics && Desc->bLockPhysicsOnStart);
 		}
 	}
@@ -78,17 +87,19 @@ void AItemActor_StaticMesh::Interact()
 {
 	if (HasAuthority())
 	{
-		if (!UStreamingLevelSaveLibrary::IsRuntimeObject(this))
+		if (HasAnyFlags(RF_WasLoaded))
 		{
 			TransToRuntimeActor();
 		}
 		else
 		{
 			RootStaticMeshComponent->SetSimulatePhysics(true);
-			if (LevelSaveComponent)
-			{
-				LevelSaveComponent->bTickCheckCell = true;
-			}
 		}
 	}
+}
+
+FItemActorDesc_Static::FItemActorDesc_Static()
+{
+	const auto Settings = GetDefault<UInventorySystemSettings>();
+	ItemActorClassOverride = Settings->GetStaticMeshItemActorClass();
 }

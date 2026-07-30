@@ -12,7 +12,7 @@ enum class EStructUtilsResult : uint8;
 class UInventoryItemDefinition;
 
 /**
- * Inventory item instance
+ * Inventory item instance, do not instance it! use CDO instead to avoid item actor issue.
  */
 UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
 class INVENTORYSYSTEM_API UInventoryItemInstance : public UObject
@@ -70,6 +70,6 @@ struct INVENTORYSYSTEM_API FItemFragment_ItemInstance
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Instanced)
-	UInventoryItemInstance* ItemInstance = nullptr;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TSoftClassPtr<UInventoryItemInstance> ItemInstance;
 };

@@ -7,7 +7,12 @@
 #include "InventoryItemActor.h"
 #include "InventoryItemDefinition.h"
 #include "InventorySystem.h"
+#include "Engine/BlueprintGeneratedClass.h"
+#include "Engine/NetDriver.h"
+#include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "Serialization/ObjectAndNameAsStringProxyArchive.h"
 
 UInventoryItemInstance::UInventoryItemInstance()
@@ -72,27 +77,26 @@ UInventoryItemInstance* UInventoryItemInstance::NewItemInstance(UObject* Outer, 
 {
 	if (!InItemDefinition || !Outer) return nullptr;
 
-	UInventoryItemInstance* TemplateInstance = nullptr;
+	TSubclassOf<UInventoryItemInstance> ItemInstanceClass;
 	if (const auto Frag = InItemDefinition->GetFragmentPtr<FItemFragment_ItemInstance>())
 	{
-		TemplateInstance = Frag->ItemInstance;
+		ItemInstanceClass = Frag->ItemInstance.LoadSynchronous();
 	}
 	
-	// If item def not implement item instance class, use default class.
-	if (!TemplateInstance)
+	if (!ItemInstanceClass)
 	{
 		UE_LOG(LogInventorySystem, Display, TEXT("InventoryItemInstance::NewItemInstance : Item Instance in %s is not valid!"),
 			*InItemDefinition->GetName());
 		return nullptr;
 	}
 	
-	const auto NewItemInstance = NewObject<UInventoryItemInstance>(Outer, TemplateInstance->GetClass(), NAME_None, RF_NoFlags, TemplateInstance);
-	NewItemInstance->ItemDefinition = InItemDefinition;
-	MARK_PROPERTY_DIRTY_FROM_NAME(UInventoryItemInstance, ItemDefinition, NewItemInstance);
+	const auto NewItemInstance = NewObject<UInventoryItemInstance>(Outer, ItemInstanceClass, NAME_None, RF_NoFlags);
 	if (const auto CurrentWorld = Outer->GetWorld(); CurrentWorld && CurrentWorld->IsGameWorld())
 	{
 		NewItemInstance->AddSubObject();
 	}
+	NewItemInstance->ItemDefinition = InItemDefinition;
+	MARK_PROPERTY_DIRTY_FROM_NAME(UInventoryItemInstance, ItemDefinition, NewItemInstance);
 	
 	return NewItemInstance;
 }

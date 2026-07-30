@@ -3,14 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InventoryItemAction.h"
 #include "InventoryItemDefinition.h"
-#include "StreamingLevelSaveInterface.h"
 #include "Components/ActorComponent.h"
 #include "InventoryListContainer.h"
 #include "InventoryContainerComponent.generated.h"
 
-class UStreamingLevelSaveComponent;
-class AInventoryInfoActor;
+class UInventoryItemAction;
 struct FInventoryItemListSaveData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemPickedUp, const UInventoryItemDefinition*, ItemDef, int, Amount);
@@ -19,21 +18,16 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemPickedUp, const UInventoryIt
  * An inventory component that attach to visible actors.
  */
 UCLASS(ClassGroup=(Inventory), meta=(BlueprintSpawnableComponent), Blueprintable)
-class INVENTORYSYSTEM_API UInventoryContainerComponent : public UActorComponent, public IStreamingLevelSaveInterface
+class INVENTORYSYSTEM_API UInventoryContainerComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-protected:
+public:
 	// Virtual function override
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-	// Streaming Level Save Interface Start --------------------
-	virtual FInstancedStruct GetSaveData_Implementation() override;
-	virtual void LoadSaveData_Implementation(const FInstancedStruct& SaveData) override;
-	// Streaming Level Save Interface End --------------------
 
 #if WITH_EDITOR
 	virtual void PostEditChangeChainProperty(struct FPropertyChangedChainEvent& PropertyChangedEvent) override;
@@ -55,12 +49,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Inventory System|Container Component", meta = (EditCondition = "bShouldInit"))
 	FInventoryItemList InitItemList;
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Inventory System|Container Component")
-	bool bAutoStreamingSave = false;
-	
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory System|Container Component")
-	UStreamingLevelSaveComponent* StreamingLevelSaveComponent;
-
 	/** Visual multicast event for item picked. */
 	UFUNCTION(Client, Unreliable)
 	void OnItemPickupUpClient(const UInventoryItemDefinition* ItemDef, const int Amount);
@@ -71,4 +59,12 @@ public:
 	
 	UPROPERTY(BlueprintAssignable)
 	FOnItemPickedUp OnItemPickedUpEvent;
+
+	// Item Actions
+	UFUNCTION(BlueprintCallable)
+	void ExecuteItemAction(const int Index, const int ActionIndex, UInventoryContainerComponent* OtherContainer = nullptr);
+
+	// Item Actions Server
+	UFUNCTION(Server, Reliable)
+	void ExecuteItemAction_Server(UInventoryItemAction* ItemAction, const FInventoryItemActionContext& Context);
 };

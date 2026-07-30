@@ -6,110 +6,6 @@
 #include "InventoryContainerComponent.h"
 #include "InventoryItemActor.h"
 #include "InventoryItemDefinition.h"
-#include "InventoryItemInstance.h"
-#include "Net/UnrealNetwork.h"
-
-#if WITH_EDITOR
-void UItemInstance_Stackable::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(ThisClass, StackAmount))
-	{
-		StackAmount = FMath::Clamp(StackAmount, 1, UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition));
-	}
-}
-#endif
-
-bool UItemInstance_Stackable::CanStack_Implementation(const UInventoryItemInstance* ItemInstance) const
-{
-	if (ItemDefinition && ItemInstance && ItemInstance->ItemDefinition)
-	{
-		if (ItemDefinition == ItemInstance->ItemDefinition)
-		{
-			const auto MaxStackAmount = UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition);
-			return StackAmount < MaxStackAmount;
-		}
-	}
-	
-	return IStackableItem::CanStack_Implementation(ItemInstance);
-}
-
-bool UItemInstance_Stackable::StackItemInstance_Implementation(UInventoryItemInstance*& ItemInstance, int Amount)
-{
-	if (Amount == 0)
-	{
-		return false;
-	}
-	
-	if (ItemInstance == nullptr)
-	{
-		return false;
-	}
-	
-	if (!Execute_CanStack(this, ItemInstance))
-	{
-		return false;
-	}
-	
-	const auto MaxStackAmount = UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition);
-	const auto InItemStackAmount = UItemProcessor_Stackable::IsStackableItem(ItemInstance) ? Execute_GetStackAmount(ItemInstance) : 1;
-	const auto CachedStackAmount = StackAmount;
-	// Custom stack in amount.
-	if (Amount > 0)
-	{
-		StackAmount = FMath::Clamp(StackAmount + Amount, 1, MaxStackAmount);
-	}
-	else if (Amount < 0)
-	{
-		StackAmount = FMath::Clamp(StackAmount + InItemStackAmount, 1, MaxStackAmount);
-	}
-	const auto Delta = StackAmount - CachedStackAmount;
-	if (UItemProcessor_Stackable::IsStackableItem(ItemInstance))
-	{
-		if (Execute_RemoveStack(ItemInstance, Delta) <= 0)
-		{
-			ItemInstance = nullptr;
-			return true;
-		}
-	}
-	
-	return IStackableItem::StackItemInstance_Implementation(ItemInstance);
-}
-
-int UItemInstance_Stackable::RemoveStack_Implementation(int InAmount)
-{
-	StackAmount -= InAmount;
-	if (StackAmount <= 0)
-	{
-		ConditionalBeginDestroy();
-		return StackAmount;
-	}
-
-	return StackAmount;
-}
-
-void UItemInstance_Stackable::SetStack_Implementation(int InAmount)
-{
-	StackAmount = InAmount;
-}
-
-void UItemInstance_Stackable::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(ThisClass, StackAmount);
-}
-
-bool UItemProcessor_Stackable::IsStackableItem(const UInventoryItemInstance* ItemInstance)
-{
-	if (ItemInstance && ItemInstance->Implements<UStackableItem>())
-	{
-		return true;
-	}
-	
-	return false;
-}
 
 int UItemProcessor_Stackable::GetEntryStackAmount(const FInventoryItemEntry& ItemEntry)
 {
@@ -202,6 +98,16 @@ bool UItemProcessor_Stackable::RemoveStackAtIndex(FInventoryItemList& ItemList, 
 	return ItemList.RemoveStackAtIndex(Index, Amount, bForceRemove);
 }
 
+bool UItemProcessor_Stackable::IsItemStackMappingEqual(const FItemStackMapping& AMap, const FItemStackMapping& BMap)
+{
+	return AMap == BMap;
+}
+
+FItemStackMapping UItemProcessor_Stackable::GetItemStackMapping(const FInventoryItemList& InItemList)
+{
+	return InItemList.GetItemMappings();
+}
+
 bool UItemProcessor_Stackable::CanListRemoveItems(const FInventoryItemList& InItemList,
 	const FItemStackMapping& InItems)
 {
@@ -213,8 +119,20 @@ bool UItemProcessor_Stackable::CanListAddItems(const FInventoryItemList& InItemL
 	return InItemList.CanAddItems(InItems);
 }
 
+bool UItemProcessor_Stackable::CanListExchangeItems(const FInventoryItemList& InItemList,
+	const FItemStackMapping& RemoveItems, const FItemStackMapping& AddItems)
+{
+	return InItemList.CanExchangeItems(RemoveItems, AddItems);
+}
+
+bool UItemProcessor_Stackable::ExchangeItems(FInventoryItemList& InItemList, const FItemStackMapping& RemoveItems,
+	const FItemStackMapping& AddItems)
+{
+	return InItemList.ExchangeItems(RemoveItems, AddItems);
+}
+
 bool UItemProcessor_Stackable::AddItemByDefinition(FInventoryItemList& ItemList, UInventoryItemDefinition* ItemDef,
-	const int Amount)
+                                                   const int Amount)
 {
 	return ItemList.AddItemByDefinition(ItemDef, Amount);
 }

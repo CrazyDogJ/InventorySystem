@@ -10,6 +10,7 @@
 #include "InventoryUserWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "InventoryItemActor.h"
+#include "InventorySlotData.h"
 
 const UScriptStruct* UInventorySystemLibrary::GetInstancedStructType(const FInstancedStruct InstancedStruct)
 {
@@ -172,9 +173,12 @@ AInventoryItemActor* UInventorySystemLibrary::DropItemActor(const UObject* World
 
 	const auto NewItemActor = World->SpawnActorDeferred<AInventoryItemActor>(ActorClass, ActorTransform);
 	NewItemActor->ItemEntry = ItemEntry;
-	if (const auto Instance = NewItemActor->ItemEntry.ItemInstance)
+	if (const auto Def = NewItemActor->ItemEntry.ItemDefinition)
 	{
-		Instance->ChangeOuter(NewItemActor);
+		if (const auto CDO = Def->GetSlotDataDefinitionCDO())
+		{
+			CDO->PostBeginPlay(NewItemActor->ItemEntry, NewItemActor);
+		}
 	}
 	NewItemActor->FinishSpawning(ActorTransform);
 	
@@ -196,61 +200,68 @@ void UInventorySystemLibrary::SetItemSlotFilter(FInventoryItemList& ItemList, in
 	}
 }
 
-/**
-FString UInventorySystemLibrary::GetAssociatedLevelName(const AActor* Actor)
+void UInventorySystemLibrary::ChangeItemStackMapping(FItemStackMapping& ItemStackMapping,
+	const TSoftObjectPtr<UInventoryItemDefinition>& InItemDefinition, const int DeltaAmount)
 {
-	if (!Actor) return FString();
-	
-	if (const ULevel* Level = Actor->GetLevel())
-	{
-		if (Level->GetWorldPartitionRuntimeCell())
-		{
-			return Level->GetWorldPartitionRuntimeCell()->GetDebugName();
-		}
-	}
-
-	const UWorldPartitionRuntimeCell* Cell;
-	GetCurrentOverlappedCell(Actor, Actor->GetActorLocation(), Cell);
-	if (Cell != nullptr)
-	{
-		return Cell->GetDebugName();
-	}
-
-	return FString();
+	ItemStackMapping.ChangeItemAmount(InItemDefinition, DeltaAmount);
 }
 
-void UInventorySystemLibrary::GetCurrentOverlappedCell(const UObject* WorldContextObject, const FVector& Location,
-                                                       const UWorldPartitionRuntimeCell*& CurrentOverlappedCell)
+void UInventorySystemLibrary::AssignItemStackChangeEvent(FItemStackMapping& ItemStackMapping,
+	FItemStackMappingStaticEvent ChangeEvent)
 {
-	CurrentOverlappedCell = nullptr;
-	
-	if (!WorldContextObject)
-	{
-		return;
-	}
+	ItemStackMapping.ItemStackMappingEvent.AddUFunction(ChangeEvent.GetUObject(), ChangeEvent.GetFunctionName());
+}
 
-	const UWorld* World = WorldContextObject->GetWorld();
-	if (!World || !World->GetWorldPartition())
+void UInventorySystemLibrary::SetupItemActor(AInventoryItemActor* InItemActor, UInventoryItemDefinition* InItemDefinition, bool bNeedConstruct)
+{
+	if (InItemActor && InItemDefinition)
 	{
-		return;
-	}
-
-	const auto ForEachCellFunction = [&CurrentOverlappedCell, Location](const UWorldPartitionRuntimeCell* Cell) -> bool
-	{
-		if (CurrentOverlappedCell)
+		if (bNeedConstruct)
 		{
-			return true;
+#if WITH_EDITOR
+			InItemActor->Modify();
+#endif
 		}
 		
-		if (const auto CellBounds = Cell->GetCellBounds(); CellBounds.IsInsideXY(Location))
+		InItemActor->ItemEntry.ItemDefinition = InItemDefinition;
+		if (const auto CDO = InItemDefinition->GetSlotDataDefinitionCDO())
 		{
-			CurrentOverlappedCell = Cell;
-			return true;
+			InItemActor->ItemEntry.ItemSlotData = CDO->GetDefaultSlotData(InItemDefinition);
 		}
 
-		return false;
-	};
-
-	World->GetWorldPartition()->RuntimeHash->ForEachStreamingCells(ForEachCellFunction);
+		if (bNeedConstruct)
+		{
+			InItemActor->OnConstruction(InItemActor->GetTransform());
+#if WITH_EDITOR
+			// ReSharper disable once CppExpressionWithoutSideEffects
+			InItemActor->MarkPackageDirty();
+#endif
+		}
+	}
 }
-*/
+
+FInventoryItemEntrySaveData UInventorySystemLibrary::GetItemEntrySaveData(const FInventoryItemEntry& ItemEntry)
+{
+	FInventoryItemEntrySaveData SaveData;
+	SaveData.SaveEntry(ItemEntry);
+	return SaveData;
+}
+
+void UInventorySystemLibrary::LoadItemEntrySaveData(FInventoryItemEntry& ItemEntry,
+	const FInventoryItemEntrySaveData& InSaveData, UObject* OuterObject)
+{
+	InSaveData.LoadEntry(ItemEntry, OuterObject);
+}
+
+FInventoryItemListSaveData UInventorySystemLibrary::GetInventorySaveData(const FInventoryItemList& ItemList)
+{
+	FInventoryItemListSaveData Result;
+	Result.SaveList(ItemList);
+	return Result;
+}
+
+void UInventorySystemLibrary::LoadInventorySaveData(FInventoryItemList& ItemList,
+	const FInventoryItemListSaveData& InSaveData, UObject* OuterObject)
+{
+	InSaveData.LoadList(ItemList, OuterObject);
+}

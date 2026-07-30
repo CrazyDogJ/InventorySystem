@@ -4,31 +4,24 @@
 
 #include "CoreMinimal.h"
 #include "InventoryEntryInterface.h"
-#include "StreamingLevelSaveInterface.h"
 #include "InventoryListContainer.h"
 #include "GameFramework/Actor.h"
 #include "InventoryItemActor.generated.h"
 
-class UStreamingLevelSaveComponent;
 class UInventoryItemDefinition;
 
 UCLASS()
-class INVENTORYSYSTEM_API AInventoryItemActor : public AActor, public IStreamingLevelSaveInterface, public IInventoryEntryInterface
+class INVENTORYSYSTEM_API AInventoryItemActor : public AActor, public IInventoryEntryInterface
 {
 	GENERATED_BODY()
 	
 protected:
-	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
-
-	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	// Streaming Level Save Interface Start --------------------
-	virtual FInstancedStruct GetSaveData_Implementation() override;
-	virtual void LoadSaveData_Implementation(const FInstancedStruct& SaveData) override;
-	// Streaming Level Save Interface End --------------------
+	
+public:
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	// Inventory Entry Interface
 	virtual FInventoryItemEntry GetItemEntry_Implementation() override { return ItemEntry; }
@@ -38,19 +31,20 @@ protected:
 	// Inventory Entry Interface
 public:
 	AInventoryItemActor();
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory System|Container Component")
+	
+	virtual void OnConstruction(const FTransform& Transform) override;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Item Actor")
 	bool bShouldTickItem = false;
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, ReplicatedUsing = OnRep_ItemEntry, Category = "Inventory System|Item Actor")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, ReplicatedUsing = OnRep_ItemEntry, Category = "Item Actor")
 	FInventoryItemEntry ItemEntry;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Transient)
-	UStreamingLevelSaveComponent* LevelSaveComponent;
 	
+	UFUNCTION(BlueprintCallable)
+	void PostLoadItemEntry();
 public:
 #if WITH_EDITOR
-	UFUNCTION(BlueprintCallable, CallInEditor, DisplayName = "Refresh Additional Item Slot Data", Category = "Inventory System|Item Actor")
+	UFUNCTION(BlueprintCallable, CallInEditor, DisplayName = "Refresh Additional Item Slot Data", Category = "Item Actor")
 	void RefreshItemInstance();
 
 	void CheckShouldRefresh();
@@ -65,7 +59,7 @@ protected:
 	UFUNCTION()
 	virtual void OnRep_ItemEntry();
 	
-	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory System|Item Actor")
+	UFUNCTION(BlueprintImplementableEvent, Category = "Item Actor")
 	void OnItemActorPickedUp();
 
 	virtual void PostTransRuntime() {}

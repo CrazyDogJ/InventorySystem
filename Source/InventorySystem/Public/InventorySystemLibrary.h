@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "InventoryUtility.h"
 #include "InventoryListContainer.h"
+#include "InventorySaveGame.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "InventorySystemLibrary.generated.h"
 
@@ -93,10 +94,25 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Inventory Manage")
 	static void SetItemSlotFilter(UPARAM(ref)FInventoryItemList& ItemList, int32 Index, const FItemSlotFilter& Filter);
 	
-/**
-	UFUNCTION(BlueprintPure, Category = "Inventory System|Container Component")
-	static FString GetAssociatedLevelName(const AActor* Actor);
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Inventory Manage")
+	static void ChangeItemStackMapping(UPARAM(ref)FItemStackMapping& ItemStackMapping,
+		const TSoftObjectPtr<UInventoryItemDefinition>& InItemDefinition, const int DeltaAmount);
 	
-	static void GetCurrentOverlappedCell(const UObject* WorldContextObject, const FVector& Location, const UWorldPartitionRuntimeCell*& CurrentOverlappedCell);
-*/
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Inventory Manage")
+	static void AssignItemStackChangeEvent(UPARAM(ref)FItemStackMapping& ItemStackMapping, FItemStackMappingStaticEvent ChangeEvent);
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|PCG")
+	static void SetupItemActor(AInventoryItemActor* InItemActor, UInventoryItemDefinition* InItemDefinition, bool bNeedConstruct = false);
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Save Game")
+	static FInventoryItemEntrySaveData GetItemEntrySaveData(const FInventoryItemEntry& ItemEntry);
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Save Game")
+	static void LoadItemEntrySaveData(UPARAM(ref)FInventoryItemEntry& ItemEntry, const FInventoryItemEntrySaveData& InSaveData, UObject* OuterObject = nullptr);
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Save Game")
+	static FInventoryItemListSaveData GetInventorySaveData(const FInventoryItemList& ItemList);
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Save Game")
+	static void LoadInventorySaveData(UPARAM(ref)FInventoryItemList& ItemList, const FInventoryItemListSaveData& InSaveData, UObject* OuterObject = nullptr);
 };

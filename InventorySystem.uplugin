@@ -1,4 +1,4 @@
-﻿{
+{
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
@@ -23,11 +23,6 @@
 			"Name": "InventorySystemEditor",
 			"Type": "Editor",
 			"LoadingPhase": "Default"
-		},
-		{
-			"Name": "InventorySystemNodes",
-			"Type": "UncookedOnly",
-			"LoadingPhase": "PostConfigInit"
 		}
 	],
 	"Plugins": [
@@ -36,16 +31,13 @@
 			"Enabled": true
 		},
 		{
-			"Name": "StreamingLevelSave",
+			"Name": "InstancedStructFragment",
 			"Enabled": true
 		},
 		{
-			"Name": "ReplicatedFoliage",
-			"Enabled": true
-		},
-		{
-			"Name": "InputTips",
+			"Name": "EnhancedInput",
 			"Enabled": true
 		}
-	]
+	],
+	"SupportURL": ""
 }

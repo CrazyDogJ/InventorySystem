@@ -7,12 +7,27 @@
 #include "GameplayAbilitySpecHandle.h"
 #include "GameplayTagContainer.h"
 #include "InventoryUtility.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
+#include "Templates/SubclassOf.h"
+#include "UObject/Interface.h"
 #include "UObject/Object.h"
 #include "InventoryProcessor_Abilities.generated.h"
 
 class UAttributeSet;
 class UGameplayAbility;
 class UGameplayEffect;
+
+UCLASS(Blueprintable, BlueprintType, Abstract)
+class INVENTORYSYSTEM_API UInventoryAbilitySetup : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintNativeEvent)
+	int GetAbilityIdFromTag(const FGameplayTag& InTag) const;
+	
+	virtual int GetAbilityIdFromTag_Implementation(const FGameplayTag& InTag) const { return -1; }
+};
 
 USTRUCT(BlueprintType)
 struct INVENTORYSYSTEM_API FAbilitySet_GameplayAbility

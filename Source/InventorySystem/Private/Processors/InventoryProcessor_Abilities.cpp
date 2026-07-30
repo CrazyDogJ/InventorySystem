@@ -4,9 +4,9 @@
 #include "Processors/InventoryProcessor_Abilities.h"
 
 #include "AbilitySystemComponent.h"
-#include "InputTipsLibrary.h"
 #include "InventoryItemDefinition.h"
 #include "InventoryItemInstance.h"
+#include "InventorySystemSettings.h"
 
 void FAbilitySet_GrantedHandles::AddAbilitySpecHandle(const FGameplayAbilitySpecHandle& Handle)
 {
@@ -95,7 +95,11 @@ void FItemFragment_Abilities::GiveToAbilitySystem(const TObjectPtr<UAbilitySyste
 
         FGameplayAbilitySpec AbilitySpec(AbilityCDO, AbilityToGrant.AbilityLevel);
         AbilitySpec.SourceObject = SourceObject;
-    	AbilitySpec.InputID = UInputTipsLibrary::GetInputIdByTag(AbilityToGrant.InputTag);
+    	// Input index using setup object to get (No hard coded for other plugins.)
+    	const auto Settings = GetDefault<UInventorySystemSettings>();
+    	const auto Setup = Settings->GetDefaultInventoryAbilitySetup();
+    	const auto SetupCDO = Setup.GetDefaultObject();
+    	AbilitySpec.InputID = SetupCDO ? SetupCDO->GetAbilityIdFromTag(AbilityToGrant.InputTag) : -1;
         
         const FGameplayAbilitySpecHandle AbilitySpecHandle = ASC->GiveAbility(AbilitySpec);
     	OutGrantedHandles.AddAbilitySpecHandle(AbilitySpecHandle);

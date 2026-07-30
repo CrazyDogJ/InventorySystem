@@ -3,71 +3,42 @@
 
 #include "InventoryItemDefinition.h"
 
-FInstancedStruct UInventoryItemDefinition::FindFragmentByClass(const UScriptStruct* StructType,
-                                                               bool& bValid) const
+#include "InventorySlotData.h"
+
+UInventoryItemDefinition::UInventoryItemDefinition()
 {
-	FInstancedStruct EmptyStruct;
-	EmptyStruct.InitializeAs(StructType);
+	ItemSlotDataDefinition = UInventorySlotDataBase::StaticClass();
+}
 
-	if (const auto Found = TypeLookup.Find(StructType))
+UInventorySlotDataBase* UInventoryItemDefinition::GetSlotDataDefinitionCDO() const
+{
+	if (ItemSlotDataDefinition)
 	{
-		FInstancedStruct Dummy;
-		Dummy.InitializeAs(DefaultFragments[*Found].GetScriptStruct());
-
-		if (Dummy.Identical(&EmptyStruct, 0))
-		{
-			bValid = true;
-			return DefaultFragments[*Found];
-		}
+		return ItemSlotDataDefinition.GetDefaultObject();
 	}
-	
-	bValid = false;
-	return FInstancedStruct();
+
+	return nullptr;
 }
 
 #if WITH_EDITOR
-void UInventoryItemDefinition::RebuildLookup(const FPropertyChangedEvent& PropertyChangedEvent)
-{
-	if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(ThisClass, DefaultFragments))
-	{
-		// Update lookup pre save.
-		TypeLookup.Empty();
-	
-		for (int i = 0; i < DefaultFragments.Num(); i++)
-		{
-			if (DefaultFragments[i].IsValid())
-			{
-				auto Type = DefaultFragments[i].GetScriptStruct();
-				TypeLookup.Add(Type, i);
-			}
-		}
-	}
-}
-
-void UInventoryItemDefinition::RefreshLocalizationKey(const FPropertyChangedEvent& PropertyChangedEvent)
-{
-	const auto PropertyName = PropertyChangedEvent.GetPropertyName();
-	if (PropertyName == GET_MEMBER_NAME_CHECKED(ThisClass, ItemID) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(ThisClass, ItemDisplayName) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(ThisClass, ItemDisplayDescription))
-	{
-		if (!ItemID.IsEmpty())
-		{
-			ItemDisplayName =
-				FText::ChangeKey(TEXT("Inventory"), ItemID + "DisplayName", ItemDisplayName);
-			ItemDisplayDescription =
-				FText::ChangeKey(TEXT("Inventory"), ItemID + "DisplayDescription", ItemDisplayDescription);
-		}
-	}
-}
-
 void UInventoryItemDefinition::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	
 	Modify();
-	RebuildLookup(PropertyChangedEvent);
-	RefreshLocalizationKey(PropertyChangedEvent);
+
+	// Post edit change event for rebuild or refresh.
+	if (PropertyChangedEvent.GetMemberPropertyName() == GET_MEMBER_NAME_CHECKED(ThisClass, ItemDefaultFragments))
+	{
+		ItemDefaultFragments.RebuildTypeMapping();
+	}
+	if (PropertyChangedEvent.GetMemberPropertyName() == GET_MEMBER_NAME_CHECKED(ThisClass, ItemBaseInfo))
+	{
+		ItemBaseInfo.RefreshLocalizationKey();
+	}
+	
+	// ReSharper disable once CppExpressionWithoutSideEffects
+	MarkPackageDirty();
 
 	PropertyChangedDelegate.Broadcast(PropertyChangedEvent);
 }

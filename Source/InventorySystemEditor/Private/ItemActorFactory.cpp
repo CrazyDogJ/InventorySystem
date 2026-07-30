@@ -5,6 +5,9 @@
 
 #include "InventoryItemActor.h"
 #include "InventoryItemDefinition.h"
+#include "InventorySlotData.h"
+#include "InventorySystemLibrary.h"
+#include "Engine/Level.h"
 
 UItemActorFactory::UItemActorFactory(const FObjectInitializer& ObjectInitializer)
 {
@@ -55,9 +58,8 @@ AActor* UItemActorFactory::SpawnActor(UObject* InAsset, ULevel* InLevel, const F
 	const auto NewActor = World->SpawnActor(ItemActorDesc->GetItemActorClass(), &Transform);
 	
 	// Item Actor Setup
-	const auto NewItemActor = Cast<AInventoryItemActor>(NewActor);
-	NewItemActor->ItemEntry.ItemDefinition = ItemDefAsset;
-	NewItemActor->ItemEntry.ItemStack = 1;
+	auto NewItemActor = Cast<AInventoryItemActor>(NewActor);
+	UInventorySystemLibrary::SetupItemActor(NewItemActor, ItemDefAsset, false);
 	
 	return NewActor;
 }
@@ -67,5 +69,5 @@ FString UItemActorFactory::GetDefaultActorLabel(UObject* Asset) const
 	const auto ItemDefAsset = Cast<UInventoryItemDefinition>(Asset);
 	if (!ItemDefAsset) return Super::GetDefaultActorLabel(Asset);
 	
-	return "Item_" + ItemDefAsset->ItemID;
+	return "Item_" + ItemDefAsset->ItemBaseInfo.Id;
 }

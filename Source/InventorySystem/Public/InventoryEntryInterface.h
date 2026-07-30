@@ -9,30 +9,32 @@
 
 struct FInventoryItemEntry;
 
+/** Everything could be the single item container. */
 UINTERFACE()
 class UInventoryEntryInterface : public UInterface
 {
 	GENERATED_BODY()
 };
 
+/** Everything could be the single item container. */
 class INVENTORYSYSTEM_API IInventoryEntryInterface
 {
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Inventory")
 	FInventoryItemEntry GetItemEntry();
 	virtual FInventoryItemEntry GetItemEntry_Implementation();
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Inventory")
 	void SetItemEntry(FInventoryItemEntry NewEntry);
 	virtual void SetItemEntry_Implementation(FInventoryItemEntry NewEntry);
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Inventory")
 	bool IsItemEntryValid(const int InstanceIndex);
 	virtual bool IsItemEntryValid_Implementation(const int InstanceIndex) { return true; }
 	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Inventory")
 	void OnEntryPickedUp(int Index);
 	virtual void OnEntryPickedUp_Implementation(int Index) {}
 };

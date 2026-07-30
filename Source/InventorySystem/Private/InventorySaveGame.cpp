@@ -4,25 +4,25 @@
 #include "InventorySaveGame.h"
 
 #include "InventoryListContainer.h"
-#include "InventoryItemInstance.h"
 #include "InventoryItemDefinition.h"
+#include "InventorySlotData.h"
 
 void FInventoryItemEntrySaveData::SaveEntry(const FInventoryItemEntry& InItemEntry)
 {
+	ItemSlotFilter = InItemEntry.ItemSlotFilter;
+	
 	if (!InItemEntry.IsSlotEmpty())
 	{
 		ItemDefinition = TSoftObjectPtr<UInventoryItemDefinition>(InItemEntry.ItemDefinition);
-		ItemStack = InItemEntry.ItemStack;
-		if (InItemEntry.ItemInstance)
+		if (const auto CDO = InItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
 		{
-			InItemEntry.ItemInstance->GetSaveData(ItemInstanceData);
+			ItemSlotDataSaveGame = CDO->GetSlotDataSaveGame(InItemEntry);
 		}
 	}
 	else
 	{
 		ItemDefinition = TSoftObjectPtr<UInventoryItemDefinition>();
-		ItemStack = 0;
-		ItemInstanceData = TArray<uint8>();
+		ItemSlotDataSaveGame = FInstancedStruct();
 	}
 }
 
@@ -33,12 +33,14 @@ void FInventoryItemEntrySaveData::LoadEntry(FInventoryItemEntry& InItemEntry, UO
 		InItemEntry.EmptySlot();
 	}
 
+	InItemEntry.ItemSlotFilter = ItemSlotFilter;
 	InItemEntry.ItemDefinition = ItemDefinition.LoadSynchronous();
-	InItemEntry.ItemStack = ItemStack;
-	if (!ItemInstanceData.IsEmpty())
+	if (InItemEntry.ItemDefinition)
 	{
-		InItemEntry.ItemInstance = UInventoryItemInstance::NewItemInstance(OuterObject, InItemEntry.ItemDefinition);
-		InItemEntry.ItemInstance->LoadSaveData(ItemInstanceData);
+		if (const auto CDO = InItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			CDO->LoadSlotData(InItemEntry, ItemSlotDataSaveGame, OuterObject);
+		}
 	}
 }
 

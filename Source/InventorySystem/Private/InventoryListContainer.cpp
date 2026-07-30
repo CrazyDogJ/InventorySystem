@@ -2,18 +2,36 @@
 
 #include "InventoryListContainer.h"
 #include "InventoryItemDefinition.h"
+#include "InventorySlotData.h"
 #include "Processors/InventoryProcessor_Stackable.h"
 
-FInventoryItemEntry::FInventoryItemEntry(UObject* OuterObject, UInventoryItemDefinition* InItemDefinition)
+/////////////////////////
+// FInventoryItemEntry //
+/////////////////////////
+
+FInventoryItemEntry::FInventoryItemEntry(UObject* OuterObject, UInventoryItemDefinition* InItemDefinition,
+	const FItemSlotFilter& InItemSlotFilter)
 {
 	ItemDefinition = InItemDefinition;
 	if (ItemDefinition)
 	{
-		ItemInstance = UInventoryItemInstance::NewItemInstance(OuterObject, ItemDefinition);
-		if (!ItemInstance)
+		if (const auto CDO = ItemDefinition->GetSlotDataDefinitionCDO())
 		{
-			ItemStack = 1;
+			const auto SlotData = CDO->GetDefaultSlotData(InItemDefinition);
+			ItemSlotData = SlotData;
 		}
+	}
+	ItemSlotFilter = InItemSlotFilter;
+}
+
+void FInventoryItemEntry::CopyFrom(const FInventoryItemEntry& Other, const bool bCopyFilter)
+{
+	ItemDefinition = Other.ItemDefinition;
+	ItemSlotData = Other.ItemSlotData;
+
+	if (bCopyFilter)
+	{
+		ItemSlotFilter = Other.ItemSlotFilter;
 	}
 }
 
@@ -29,40 +47,54 @@ bool FInventoryItemEntry::IsItemAllowed(const UInventoryItemDefinition* ItemDef)
 
 bool FInventoryItemEntry::IsSlotEmpty() const
 {
-	return ItemDefinition == nullptr && ItemStack == 0 && ItemInstance == nullptr;
+	return ItemDefinition == nullptr && ItemSlotData == FInstancedStruct();
 }
 
-void FInventoryItemEntry::EmptySlot(const bool& bDestroyInstance)
+void FInventoryItemEntry::EmptySlot(const bool& bCallEmptyLogic, const bool& bClearFilter)
 {
-	ItemDefinition = nullptr;
-	ItemStack = 0;
-	if (ItemInstance && bDestroyInstance)
+	if (bClearFilter)
 	{
-		ItemInstance->ConditionalBeginDestroy();
+		ItemSlotFilter = FItemSlotFilter();
 	}
-	ItemInstance = nullptr;
+	
+	ItemDefinition = nullptr;
+	if (bCallEmptyLogic)
+	{
+		if (ItemDefinition)
+		{
+			if (const auto CDO = ItemDefinition->GetSlotDataDefinitionCDO())
+			{
+				CDO->EmptySlotData(*this);
+			}
+		}
+	}
+	ItemSlotData = FInstancedStruct();
 }
 
 int FInventoryItemEntry::GetStackAmount() const
 {
-	// Interface
-	if (UItemProcessor_Stackable::IsStackableItem(ItemInstance))
+	if (ItemDefinition)
 	{
-		return IStackableItem::Execute_GetStackAmount(ItemInstance);
+		if (const auto CDO = ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			return CDO->GetStackAmount(*this);
+		}
+		
+		return 1;
 	}
-	// Default
-	return ItemStack;
+
+	return 0;
 }
 
 void FInventoryItemEntry::SetStackAmount(const int& InStackAmount)
 {
-	// Interface
-	if (UItemProcessor_Stackable::IsStackableItem(ItemInstance))
+	if (ItemDefinition)
 	{
-		return IStackableItem::Execute_SetStack(ItemInstance, InStackAmount);
+		if (const auto CDO = ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			return CDO->SetStackAmount(*this, InStackAmount);
+		}
 	}
-	// Default
-	ItemStack = InStackAmount;
 }
 
 int FInventoryItemEntry::GetMaxStackAmount() const
@@ -72,58 +104,40 @@ int FInventoryItemEntry::GetMaxStackAmount() const
 		return 1;
 	}
 	
-	return UItemProcessor_Stackable::GetDefaultMaxStackAmount(ItemDefinition);
+	if (ItemDefinition)
+	{
+		if (const auto CDO = ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			return CDO->GetMaxStackAmount(*this);
+		}
+	}
+
+	return 1;
 }
 
 bool FInventoryItemEntry::CanEntryStack(const FInventoryItemEntry& OtherItemEntry) const
 {
-	// Validate
-	if (IsSlotEmpty() || OtherItemEntry.IsSlotEmpty())
+	if (ItemDefinition)
 	{
-		return false;
+		if (const auto CDO = ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			return CDO->CanStack(*this, OtherItemEntry);
+		}
 	}
-	if (ItemDefinition != OtherItemEntry.ItemDefinition)
-	{
-		return false;
-	}
-	// Interface
-	if (UItemProcessor_Stackable::IsStackableItem(ItemInstance))
-	{
-		return IStackableItem::Execute_CanStack(ItemInstance, OtherItemEntry.ItemInstance);
-	}
-	// Default
-	const auto DefaultMaxStack = GetMaxStackAmount();
-	const auto ToMax = DefaultMaxStack - ItemStack;
-	return ToMax >= 1;
+
+	return false;
 }
 
 bool FInventoryItemEntry::StackEntry(FInventoryItemEntry& OtherEntry, int SpecificAmount)
 {
-	if (UItemProcessor_Stackable::IsStackableItem(ItemInstance))
+	if (ItemDefinition)
 	{
-		return IStackableItem::Execute_StackItemInstance(ItemInstance, OtherEntry.ItemInstance, SpecificAmount);
+		if (const auto CDO = ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			return CDO->AddStackAmount(*this, OtherEntry, SpecificAmount);
+		}
 	}
-
-	const auto MaxStackAmount = GetMaxStackAmount();
-	const auto InItemStackAmount = OtherEntry.ItemStack;
-	const auto CachedStackAmount = ItemStack;
-	// Custom stack in amount.
-	if (SpecificAmount > 0)
-	{
-		ItemStack = FMath::Clamp(ItemStack + SpecificAmount, 1, MaxStackAmount);
-	}
-	else if (SpecificAmount == INDEX_NONE)
-	{
-		ItemStack = FMath::Clamp(ItemStack + InItemStackAmount, 1, MaxStackAmount);
-	}
-	const auto Delta = ItemStack - CachedStackAmount;
-	if (OtherEntry.ItemStack - Delta <= 0)
-	{
-		OtherEntry.EmptySlot();
-		return true;
-	}
-
-	OtherEntry.ItemStack -= Delta;
+	
 	return false;
 }
 
@@ -133,18 +147,29 @@ void FInventoryItemEntry::RemoveStack(int SpecificAmount)
 	{
 		return;
 	}
-	
-	if (UItemProcessor_Stackable::IsStackableItem(ItemInstance))
-	{
-		IStackableItem::Execute_RemoveStack(ItemInstance, SpecificAmount);
-	}
 
-	ItemStack -= SpecificAmount;
-	if (ItemStack <= 0)
+	if (ItemDefinition)
 	{
-		EmptySlot();
+		if (const auto CDO = ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			CDO->RemoveStackAmount(*this, SpecificAmount);
+		}
 	}
 }
+
+TObjectPtr<UInventoryItemInstance> FInventoryItemEntry::TryGetItemInstance() const
+{
+	if (const auto Instance = ItemSlotData.GetPtr<FItemSlotData_ItemInstance>())
+	{
+		return Instance->ItemInstance;
+	}
+	
+	return nullptr;
+}
+
+////////////////////////
+// FInventoryItemList //
+////////////////////////
 
 void FInventoryItemList::EmptySlotByIndex(TArray<int32> Indices, bool bDirty)
 {
@@ -324,6 +349,22 @@ int FInventoryItemList::FindFirstStackableSlot(const FInventoryItemEntry& OtherI
     return INDEX_NONE;
 }
 
+int FInventoryItemList::GetItemTotalAmountByDefinition(
+	const TSoftObjectPtr<UInventoryItemDefinition>& ItemDefinitionSoft) const
+{
+	int Result = 0;
+	
+	for (auto Itr : ItemList)
+	{
+		if (!Itr.IsSlotEmpty() && TSoftObjectPtr<>(Itr.ItemDefinition) == ItemDefinitionSoft)
+		{
+			Result += Itr.GetStackAmount();
+		}
+	}
+	
+	return Result;
+}
+
 int FInventoryItemList::GetItemTotalAmountByDefinition(const UInventoryItemDefinition* ItemDef) const
 {
 	int Result = 0;
@@ -353,7 +394,7 @@ UInventoryItemInstance* FInventoryItemList::GetItemInstance(const int& Index) co
 {
 	if (ItemList.IsValidIndex(Index))
 	{
-		return ItemList[Index].ItemInstance;
+		return ItemList[Index].TryGetItemInstance();
 	}
 
 	return nullptr;
@@ -367,6 +408,28 @@ bool FInventoryItemList::CanSlotSplit(const int& SlotIndex) const
 	}
 	
 	return false;
+}
+
+FItemStackMapping FInventoryItemList::GetItemMappings() const
+{
+	TMap<TSoftObjectPtr<UInventoryItemDefinition>, int> Result;
+
+	for (const auto ItemSlot : ItemList)
+	{
+		if (!ItemSlot.IsSlotEmpty())
+		{
+			if (const auto Found = Result.Find(ItemSlot.ItemDefinition))
+			{
+				Result.Add(ItemSlot.ItemDefinition, *Found + ItemSlot.GetStackAmount());
+			}
+			else
+			{
+				Result.Add(ItemSlot.ItemDefinition, ItemSlot.GetStackAmount());
+			}
+		}
+	}
+
+	return FItemStackMapping(Result);
 }
 
 bool FInventoryItemList::CanRemoveItems(const FItemStackMapping& InItems) const
@@ -397,39 +460,58 @@ bool FInventoryItemList::CanAddItems(const FItemStackMapping& InItems) const
 	}
 	
 	// Copy list for calculation.
-	TArray<FInventoryItemEntry> CopyItemList = ItemList;
-
-	auto CopyInItems = InItems.Items;
-	
-	// init stack amount.
-	for (auto& Itr : CopyItemList)
+	FInventoryItemList CopiedList = *this;
+	for (auto Item : InItems.Items)
 	{
-		const UInventoryItemDefinition* LocalItemDef;
-		if (Itr.IsSlotEmpty())
+		if (const auto LoadedItem = Item.Key.LoadSynchronous())
 		{
-			TArray<UInventoryItemDefinition*> Keys;
-			CopyInItems.GenerateKeyArray(Keys);
-			LocalItemDef = Keys[0];
-		}
-		else
-		{
-			LocalItemDef = Itr.ItemDefinition;
-		}
-		
-		if (const auto FoundPtr = CopyInItems.Find(LocalItemDef))
-		{
-			auto& StackAmount = *FoundPtr;
-			StackAmount -= Itr.GetMaxStackAmount() - Itr.GetStackAmount();
-			if (StackAmount <= 0)
+			if (!CopiedList.AddItemByDefinition(LoadedItem, Item.Value))
 			{
-				CopyInItems.Remove(LocalItemDef);
-				// Try end loop.
-				if (CopyInItems.Num() == 0)
-				{
-					return true;
-				}
+				return false;
 			}
 		}
+	}
+
+	return true;
+}
+
+bool FInventoryItemList::CanExchangeItems(const FItemStackMapping& RemoveItems, const FItemStackMapping& AddItems) const
+{
+	FInventoryItemList CopiedList = *this;
+	if (CopiedList.CanRemoveItems(RemoveItems))
+	{
+		for (const auto Itr : RemoveItems.Items)
+		{
+			const auto ItemDef = Itr.Key.LoadSynchronous();
+			CopiedList.RemoveItemByDefinition(ItemDef, Itr.Value);
+		}
+		
+		if (CopiedList.CanAddItems(AddItems))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool FInventoryItemList::ExchangeItems(const FItemStackMapping& RemoveItems, const FItemStackMapping& AddItems)
+{
+	if (CanExchangeItems(RemoveItems, AddItems))
+	{
+		for (const auto Itr : RemoveItems.Items)
+		{
+			const auto ItemDef = Itr.Key.LoadSynchronous();
+			RemoveItemByDefinition(ItemDef, Itr.Value);
+		}
+		
+		for (const auto Itr : AddItems.Items)
+		{
+			const auto ItemDef = Itr.Key.LoadSynchronous();
+			AddItemByDefinition(ItemDef, Itr.Value);
+		}
+
+		return true;
 	}
 
 	return false;
@@ -474,14 +556,7 @@ int FInventoryItemList::RemoveItemByDefinition(const UInventoryItemDefinition* I
 		{
 			if (ItemList[i].GetStackAmount() > LocalAmount)
 			{
-				if (UItemProcessor_Stackable::IsStackableItem(ItemList[i].ItemInstance))
-				{
-					IStackableItem::Execute_RemoveStack(ItemList[i].ItemInstance, LocalAmount);
-				}
-				else
-				{
-					ItemList[i].ItemStack -= LocalAmount;
-				}
+				ItemList[i].RemoveStack(Amount);
 				MarkIndexChange(i);
 				break;
 			}
@@ -536,34 +611,25 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 		if (AmountToMax >= ItemEntry.GetStackAmount())
 		{
 			ItemList[EmptyIndex].CopyFrom(ItemEntry);
-			if (ItemEntry.ItemInstance)
+			if (const auto ItemInstance = ItemEntry.TryGetItemInstance())
 			{
-				ItemEntry.ItemInstance->ChangeOuter(OuterObject);
+				ItemInstance->ChangeOuter(OuterObject);
 			}
 			MarkIndexChange(EmptyIndex);
 			ItemEntry.EmptySlot(false);
 			return true;
 		}
 
-		// Loop
+		// Special Empty Loop (Amount over max stack.)
 		ItemList[EmptyIndex].ItemDefinition = ItemEntry.ItemDefinition;
-		if (const auto NewInstance = UInventoryItemInstance::NewItemInstance(OuterObject, ItemEntry.ItemDefinition))
+		if (const auto LogicCDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
 		{
-			ItemList[EmptyIndex].ItemInstance = NewInstance;
-			if (UItemProcessor_Stackable::IsStackableItem(NewInstance))
+			const auto DefaultSlotData = LogicCDO->GetDefaultSlotData(ItemEntry.ItemDefinition, OuterObject);
+			ItemList[EmptyIndex].ItemSlotData = DefaultSlotData;
+			if (LogicCDO->AddStackAmount(ItemList[EmptyIndex], ItemEntry))
 			{
-				IStackableItem::Execute_StackItemInstance(NewInstance, ItemEntry.ItemInstance, ItemEntry.GetStackAmount());
+				return true;
 			}
-			else
-			{
-				ItemList[EmptyIndex].ItemStack = AmountToMax;
-				ItemEntry.ItemStack -= AmountToMax;
-			}
-		}
-		else
-		{
-			ItemList[EmptyIndex].ItemStack = AmountToMax;
-			ItemEntry.ItemStack -= AmountToMax;
 		}
 		
 		// Instance
@@ -593,11 +659,14 @@ bool FInventoryItemList::DragDropItem(int DragIndex, FInventoryItemList& DropIte
 		}
 	}
 	
-	const auto DragItemInstance = ItemList[DragIndex].ItemInstance;
-	const auto DropItemInstance = DropItemList.ItemList[DropIndex].ItemInstance;
-	
 	const auto DragItemDef = ItemList[DragIndex].ItemDefinition;
 	const auto DropItemDef = DropItemList.ItemList[DropIndex].ItemDefinition;
+	
+	const auto DragCDO = DragItemDef ? DragItemDef->GetSlotDataDefinitionCDO() : nullptr;
+	const auto DropCDO = DropItemDef ? DropItemDef->GetSlotDataDefinitionCDO() : nullptr;
+	
+	const auto DragItemSlotData = ItemList[DragIndex].ItemSlotData;
+	const auto DropItemSlotData = DropItemList.ItemList[DropIndex].ItemSlotData;
 	
 	const auto DragItemStackAmount = ItemList[DragIndex].GetStackAmount();
 	const auto DropItemStackAmount = DropItemList.ItemList[DropIndex].GetStackAmount();
@@ -610,19 +679,18 @@ bool FInventoryItemList::DragDropItem(int DragIndex, FInventoryItemList& DropIte
 	if (!bIsSame || bSameExchange)
 	{
 		ItemList[DragIndex].ItemDefinition = DropItemDef;
-		ItemList[DragIndex].ItemStack = DropItemStackAmount;
-		ItemList[DragIndex].ItemInstance = DropItemInstance;
+		ItemList[DragIndex].ItemSlotData = DropItemSlotData;
 		DropItemList.ItemList[DropIndex].ItemDefinition = DragItemDef;
-		DropItemList.ItemList[DropIndex].ItemStack = DragItemStackAmount;
-		DropItemList.ItemList[DropIndex].ItemInstance = DragItemInstance;
+		DropItemList.ItemList[DropIndex].ItemSlotData = DragItemSlotData;
 
-		if (DropItemInstance)
+		// Update post begin play logic for item instances or other things.
+		if (DropCDO)
 		{
-			DropItemInstance->ChangeOuter(OuterObject);
+			DropCDO->PostBeginPlay(ItemList[DragIndex], OuterObject);
 		}
-		if (DragItemInstance)
+		if (DragCDO)
 		{
-			DragItemInstance->ChangeOuter(DropItemList.OuterObject);
+			DragCDO->PostBeginPlay(DropItemList.ItemList[DropIndex], DropItemList.OuterObject);
 		}
 		
 		MarkIndexChange(DragIndex);
@@ -669,24 +737,16 @@ bool FInventoryItemList::SplitItem(int SplitIndex, int SplitAmount, FInventoryIt
 	const auto FoundEmptyIndex = ContainerToSplit.FindFirstEmptySlot(ItemList[SplitIndex].ItemDefinition);
 	if (FoundEmptyIndex >= 0)
 	{
-		ContainerToSplit.ItemList[FoundEmptyIndex].ItemDefinition = ItemList[SplitIndex].ItemDefinition;
-		if (const auto NewInstance = UInventoryItemInstance::NewItemInstance(ContainerToSplit.OuterObject, ItemList[SplitIndex].ItemDefinition))
+		const auto Def = ItemList[SplitIndex].ItemDefinition;
+		ContainerToSplit.ItemList[FoundEmptyIndex].ItemDefinition = Def;
+		if (Def)
 		{
-			ContainerToSplit.ItemList[FoundEmptyIndex].ItemInstance = NewInstance;
-			if (UItemProcessor_Stackable::IsStackableItem(NewInstance))
+			if (const auto CDO = Def->GetSlotDataDefinitionCDO())
 			{
-				IStackableItem::Execute_StackItemInstance(NewInstance, ItemList[SplitIndex].ItemInstance, SplitAmount);
+				const auto ReturnEntry = CDO->RemoveStackAmount(ItemList[SplitIndex], SplitAmount);
+				ContainerToSplit.ItemList[FoundEmptyIndex].ItemSlotData = ReturnEntry.ItemSlotData;
+				CDO->PostBeginPlay(ContainerToSplit.ItemList[FoundEmptyIndex], ContainerToSplit.OuterObject);
 			}
-			else
-			{
-				ContainerToSplit.ItemList[FoundEmptyIndex].ItemStack = SplitAmount;
-				ItemList[SplitIndex].ItemStack -= SplitAmount;
-			}
-		}
-		else
-		{
-			ContainerToSplit.ItemList[FoundEmptyIndex].ItemStack = SplitAmount;
-			ItemList[SplitIndex].ItemStack -= SplitAmount;
 		}
 			
 		MarkIndexChange(SplitIndex);

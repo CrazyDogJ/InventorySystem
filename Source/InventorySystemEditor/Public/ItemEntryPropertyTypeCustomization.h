@@ -4,7 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "InventoryListContainer.h"
-#include "UObject/Object.h"
+#include "IPropertyTypeCustomization.h"
+#include "Input/Reply.h"
 
 class INVENTORYSYSTEMEDITOR_API FItemEntryPropertyTypeCustomization : public IPropertyTypeCustomization
 {

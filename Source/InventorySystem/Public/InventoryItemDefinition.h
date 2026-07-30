@@ -3,11 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "InventoryItemInstance.h"
+#include "InstancedFragmentContainer.h"
 #include "InventoryUtility.h"
+#include "NameTextStruct.h"
 #include "Engine/DataAsset.h"
 #include "StructUtils/InstancedStruct.h"
 #include "InventoryItemDefinition.generated.h"
+
+class UInventorySlotDataBase;
 
 #if WITH_EDITOR
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnItemDefinitionPropertyChanged, const FPropertyChangedEvent& PropertyChangedEvent)
@@ -22,28 +25,26 @@ class INVENTORYSYSTEM_API UInventoryItemDefinition : public UDataAsset
 	GENERATED_BODY()
 	
 public:
-	/** Item id, used to identity or display text key for localization. */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Base Info")
-	FString ItemID;
+	UInventoryItemDefinition();
+	
+	/** Item base info struct, from InstancedStructFragment plugin. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FNameTextStruct ItemBaseInfo{"",FText(), FText(), "InventorySystem"};
 
-	/** Item display name, localization key associate with item id. */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Base Info")
-	FText ItemDisplayName;
+	/** Item default fragments, from InstancedStructFragment plugin. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FInstancedFragmentContainer ItemDefaultFragments;
 
-	/** Item display description, localization key associate with item id. */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Base Info")
-	FText ItemDisplayDescription;
+	/** Item slot data definition. Always CDO for logic calculation. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TSubclassOf<UInventorySlotDataBase> ItemSlotDataDefinition;
 
 	/** Item tag for filter. */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Base Info")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FGameplayTag ItemGameplayTag;
-	
-	/** Determine what default properties the item has. */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta=(ExcludeBaseStruct), Category = "Storage Info")
-	TArray<FInstancedStruct> DefaultFragments;
 
 	/** Determine how the item actor represent in the game world. */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta=(ExcludeBaseStruct), Category = "Storage Info")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta=(ExcludeBaseStruct))
 	TInstancedStruct<FItemActorDescBase> ItemActorDesc;
 
 public:
@@ -51,19 +52,12 @@ public:
 	template <typename T>
 		const T* GetFragmentPtr() const
 	{
-		const UScriptStruct* StructType = T::StaticStruct();
-		if (const auto Found = TypeLookup.Find(StructType))
-		{
-			return DefaultFragments[*Found].GetPtr<T>();
-		}
-		
-		return nullptr;
+		return ItemDefaultFragments.GetFragmentPtr<T>();
 	}
-	
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory System")
-	UPARAM(DisplayName = "Property")
-	FInstancedStruct FindFragmentByClass(const UScriptStruct* StructType, bool& bValid) const;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	UInventorySlotDataBase* GetSlotDataDefinitionCDO() const;
+	
 #if WITH_EDITORONLY_DATA
 	FOnItemDefinitionPropertyChanged PropertyChangedDelegate;
 #endif
@@ -71,13 +65,6 @@ public:
 protected:
 	
 #if WITH_EDITOR
-	void RebuildLookup(const FPropertyChangedEvent& PropertyChangedEvent);
-	void RefreshLocalizationKey(const FPropertyChangedEvent& PropertyChangedEvent);
-	
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
-
-	// Accelerate look up.
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, AdvancedDisplay, Category = "Storage Info")
-	TMap<const UScriptStruct*, int> TypeLookup;
 };

@@ -5,33 +5,10 @@
 #include "CoreMinimal.h"
 #include "InventoryItemInstance.h"
 #include "InventoryListContainer.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
 #include "InventoryProcessor_Stackable.generated.h"
 
 struct FInventoryItemList;
-
-/** TODO : Not play test yet! */
-UCLASS()
-class UItemInstance_Stackable : public UInventoryItemInstance, public IStackableItem
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame, Replicated, Category = "Inventory System|Item Instance")
-	int StackAmount = 0;
-
-protected:
-	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
-	// Stack item interface start ---
-	virtual int GetStackAmount_Implementation() const override { return StackAmount; }
-	virtual bool CanStack_Implementation(const UInventoryItemInstance* ItemInstance) const override;
-	virtual bool StackItemInstance_Implementation(UInventoryItemInstance*& ItemInstance, int Amount = -1) override;
-	virtual int RemoveStack_Implementation(int InAmount) override;
-	virtual void SetStack_Implementation(int InAmount) override;
-	// Stack item interface end ---
-};
 
 /** Stackable fragment. */
 USTRUCT(BlueprintType)
@@ -53,9 +30,6 @@ class INVENTORYSYSTEM_API UItemProcessor_Stackable : public UBlueprintFunctionLi
 	GENERATED_BODY()
 		
 public:
-
-	static bool IsStackableItem(const UInventoryItemInstance* ItemInstance);
-
 	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
 	static int GetDefaultMaxStackAmount(const UInventoryItemDefinition* ItemDef);
 	
@@ -90,11 +64,23 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
 	static bool RemoveStackAtIndex(UPARAM(ref)FInventoryItemList& ItemList, int Index, int Amount, bool bForceRemove);
 
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
+	static bool IsItemStackMappingEqual(const FItemStackMapping& AMap, const FItemStackMapping& BMap);
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory System|Stackable")
+	static FItemStackMapping GetItemStackMapping(const FInventoryItemList& InItemList);
+	
 	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
 	static bool CanListRemoveItems(const FInventoryItemList& InItemList, const FItemStackMapping& InItems);
 
 	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
 	static bool CanListAddItems(const FInventoryItemList& InItemList, const FItemStackMapping& InItems);
+
+	UFUNCTION(BlueprintPure, Category = "Inventory System|Stackable")
+	static bool CanListExchangeItems(const FInventoryItemList& InItemList, const FItemStackMapping& RemoveItems, const FItemStackMapping& AddItems);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
+	static bool ExchangeItems(UPARAM(ref)FInventoryItemList& InItemList, const FItemStackMapping& RemoveItems, const FItemStackMapping& AddItems);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory System|Stackable")
 	static bool AddItemByDefinition(UPARAM(ref)FInventoryItemList& ItemList, UInventoryItemDefinition* ItemDef, int Amount);

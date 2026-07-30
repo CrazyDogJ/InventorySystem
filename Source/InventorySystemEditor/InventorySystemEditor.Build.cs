@@ -22,7 +22,7 @@ public class InventorySystemEditor : ModuleRules
                 "Engine",
                 "Slate",
                 "SlateCore", 
-                "StructUtilsEditor"
+                "StructUtilsEditor",
             }
             
         );

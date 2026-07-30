@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InventoryUtility.h"
 #include "StructUtils/InstancedStruct.h"
 #include "InventorySaveGame.generated.h"
 
@@ -13,7 +14,7 @@ struct FInventoryItemEntry;
 class UInventoryItemInstance;
 
 /** Item list entry save data. */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FInventoryItemEntrySaveData
 {
 	GENERATED_BODY()
@@ -25,10 +26,10 @@ struct FInventoryItemEntrySaveData
 	TSoftObjectPtr<UInventoryItemDefinition> ItemDefinition;
 
 	UPROPERTY(SaveGame)
-	int ItemStack = 0;
+	FItemSlotFilter ItemSlotFilter;
 	
 	UPROPERTY(SaveGame)
-	TArray<uint8> ItemInstanceData;
+	FInstancedStruct ItemSlotDataSaveGame;
 };
 
 /** Item list array save data. */

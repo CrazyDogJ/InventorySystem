@@ -19,20 +19,22 @@ class INVENTORYSYSTEM_API AItemActor_StaticMesh : public AInventoryItemActor
 public:
 	AItemActor_StaticMesh();
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory System|Item Actor")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Item Actor")
 	UStaticMeshComponent* RootStaticMeshComponent;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory System|Item Actor")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Item Actor")
 	bool bReceiveHitAndDamage = false;
 	
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
-	virtual void PostTransRuntime() override;
-	virtual void OnRep_ItemEntry() override;
 	
 	void RegisterWakeEvents(const bool bRegisterOrNot);
 
 	void Interact();
+	
+protected:
+	virtual void PostTransRuntime() override;
+	virtual void OnRep_ItemEntry() override;
 };
 
 /** Default static mesh item actor. */
@@ -41,14 +43,20 @@ struct FItemActorDesc_Static : public FItemActorDescBase
 {
 	GENERATED_BODY()
 
+	FItemActorDesc_Static();
+	
 	/** Item actor class override. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TSubclassOf<AItemActor_StaticMesh> ItemActorClassOverride = AItemActor_StaticMesh::StaticClass();
+	TSubclassOf<AItemActor_StaticMesh> ItemActorClassOverride;
 	
 	/** Item mesh. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UStaticMesh* StaticMesh = nullptr;
 
+	/** Override materials for static mesh. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<TObjectPtr<UMaterialInterface>> OverrideMaterials;
+	
 	/** Should item simulate physics. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Physics")
 	bool bSimulatePhysics = true;

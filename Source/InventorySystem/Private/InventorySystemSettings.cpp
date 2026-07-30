@@ -26,3 +26,13 @@ TSubclassOf<UInventoryUserWidget> UInventorySystemSettings::GetUserWidgetClass(T
 
 	return nullptr;
 }
+
+TSubclassOf<AItemActor_StaticMesh> UInventorySystemSettings::GetStaticMeshItemActorClass() const
+{
+	return DefaultStaticMeshItemActorClass.LoadSynchronous();
+}
+
+TSubclassOf<UInventoryAbilitySetup> UInventorySystemSettings::GetDefaultInventoryAbilitySetup() const
+{
+	return DefaultInventoryAbilitySetup.LoadSynchronous();
+}

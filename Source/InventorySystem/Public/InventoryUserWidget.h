@@ -49,7 +49,7 @@ public:
 	UPARAM(ref)FInventoryItemList& GetItemList() const;
 
 	UFUNCTION(BlueprintPure, Category = "Inventory System|User Widget")
-	void GetCurrentItemEntry(FInventoryItemEntry& OutItemEntry) const;
+	bool GetCurrentItemEntry(FInventoryItemEntry& OutItemEntry) const;
 
 	void ManageDelegates(const bool& bManage);
 	void InitParams(UInventoryContainerComponent* InContainer, int InIndex = -1);

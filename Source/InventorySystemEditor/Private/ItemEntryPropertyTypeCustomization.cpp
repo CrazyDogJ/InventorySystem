@@ -8,6 +8,7 @@
 #include "IContentBrowserSingleton.h"
 #include "IDetailChildrenBuilder.h"
 #include "InventoryItemDefinition.h"
+#include "InventorySlotData.h"
 #include "Processors/InventoryProcessor_Stackable.h"
 
 #define LOCTEXT_NAMESPACE "FItemEntryPropertyTypeCustomization"
@@ -34,8 +35,13 @@ FReply FItemEntryPropertyTypeCustomization::OnPickDataAssetClicked(TSharedRef<IP
 			{
 				CurrentEntry->EmptySlot();
 				CurrentEntry->ItemDefinition = SelectedDataAsset;
-				CurrentEntry->ItemStack = 1;
-				CurrentEntry->ItemInstance = UInventoryItemInstance::NewItemInstance(CurrentOuter, SelectedDataAsset);
+				if (SelectedDataAsset)
+				{
+					if (const auto CDO = CurrentEntry->ItemDefinition->GetSlotDataDefinitionCDO())
+					{
+						CurrentEntry->ItemSlotData = CDO->GetDefaultSlotData(SelectedDataAsset);
+					}
+				}
 				PropertyHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
 			}
 		}

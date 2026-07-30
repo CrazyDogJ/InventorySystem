@@ -5,10 +5,9 @@
 
 #include "InventoryItemDefinition.h"
 #include "InventorySaveGame.h"
-#include "StreamingLevelSaveComponent.h"
-#include "StreamingLevelSaveLibrary.h"
+#include "InventorySlotData.h"
+#include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
-#include "Processors/InventoryProcessor_Stackable.h"
 
 void AInventoryItemActor::OnEntryPickedUp_Implementation(int Index)
 {
@@ -36,14 +35,12 @@ void AInventoryItemActor::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 
 	// Valid item stack.
-	if (ItemEntry.ItemInstance && ItemEntry.ItemInstance->Implements<UStackableItem>())
+	if (ItemEntry.ItemDefinition)
 	{
-		ItemEntry.ItemStack = 0;
-	}
-	else
-	{
-		const auto MaxStack = ItemEntry.GetMaxStackAmount();
-		ItemEntry.ItemStack = FMath::Clamp(ItemEntry.ItemStack, 1, MaxStack);
+		if (const auto CDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			CDO->ValidateStackAmount(ItemEntry);
+		}
 	}
 	
 #if WITH_EDITOR
@@ -56,12 +53,6 @@ void AInventoryItemActor::OnConstruction(const FTransform& Transform)
 #endif
 	
 	OnRep_ItemEntry();
-
-	if (UStreamingLevelSaveLibrary::IsRuntimeObject(this) && HasAuthority() && !LevelSaveComponent)
-	{
-		const auto NewComp = AddComponentByClass(UStreamingLevelSaveComponent::StaticClass(), false, FTransform(), false);
-		LevelSaveComponent = Cast<UStreamingLevelSaveComponent>(NewComp);
-	}
 }
 
 void AInventoryItemActor::BeginPlay()
@@ -69,9 +60,12 @@ void AInventoryItemActor::BeginPlay()
 	Super::BeginPlay();
 
 	// Manually add replicated sub-object when begin play.
-	if (ItemEntry.ItemInstance)
+	if (ItemEntry.ItemDefinition)
 	{
-		AddReplicatedSubObject(ItemEntry.ItemInstance);
+		if (const auto CDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			CDO->PostBeginPlay(ItemEntry, this);
+		}
 	}
 }
 
@@ -79,9 +73,12 @@ void AInventoryItemActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	if (bShouldTickItem && ItemEntry.ItemInstance && ItemEntry.ItemInstance->bTickable)
+	if (ItemEntry.ItemDefinition && bShouldTickItem)
 	{
-		ItemEntry.ItemInstance->Tick(DeltaSeconds);
+		if (const auto CDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			CDO->TickItemEntry(ItemEntry, DeltaSeconds);
+		}
 	}
 }
 
@@ -95,29 +92,21 @@ void AInventoryItemActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 }
 
-FInstancedStruct AInventoryItemActor::GetSaveData_Implementation()
-{
-	FInventoryItemEntrySaveData SaveData;
-	SaveData.SaveEntry(ItemEntry);
-	return FInstancedStruct::Make(SaveData);
-}
-
-void AInventoryItemActor::LoadSaveData_Implementation(const FInstancedStruct& SaveData)
-{
-	if (const auto Ptr = SaveData.GetPtr<FInventoryItemEntrySaveData>())
-	{
-		Ptr->LoadEntry(ItemEntry, this);
-		OnRep_ItemEntry();
-		if (ItemEntry.ItemInstance)
-		{
-			AddReplicatedSubObject(ItemEntry.ItemInstance);
-		}
-	}
-}
-
 void AInventoryItemActor::SetItemEntry_Implementation(FInventoryItemEntry NewEntry)
 {
 	ItemEntry = NewEntry;
+}
+
+void AInventoryItemActor::PostLoadItemEntry()
+{
+	OnRep_ItemEntry();
+	if (ItemEntry.ItemDefinition)
+	{
+		if (const auto CDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			CDO->PostBeginPlay(ItemEntry, this);
+		}
+	}
 }
 
 #if WITH_EDITOR
@@ -126,8 +115,12 @@ void AInventoryItemActor::RefreshItemInstance()
 	if (ItemEntry.ItemDefinition)
 	{
 		Modify();
-		
-		ItemEntry.ItemInstance = UInventoryItemInstance::NewItemInstance(this, ItemEntry.ItemDefinition);
+
+		if (const auto CDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			ItemEntry.ItemSlotData = CDO->GetDefaultSlotData(ItemEntry.ItemDefinition, this);
+			CDO->ValidateStackAmount(ItemEntry);
+		}
 		OnRep_ItemEntry();
 
 		// ReSharper disable once CppExpressionWithoutSideEffects
@@ -137,41 +130,22 @@ void AInventoryItemActor::RefreshItemInstance()
 
 void AInventoryItemActor::CheckShouldRefresh()
 {
-	// Not valid;
-	if (ItemEntry.ItemDefinition)
+	if (const auto CDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
 	{
-		if (const auto ItemFrag = ItemEntry.ItemDefinition->GetFragmentPtr<FItemFragment_ItemInstance>())
+		if (CDO->ShouldRefreshItemEntry(ItemEntry))
 		{
-			if (ItemFrag->ItemInstance && !ItemEntry.ItemInstance)
-			{
-				RefreshItemInstance();
-				return;
-			}
-		}
-	}
-	
-	// Not the same class.
-	if (const auto Def = ItemEntry.ItemDefinition)
-	{
-		if (const auto Ptr = Def->GetFragmentPtr<FItemFragment_ItemInstance>())
-		{
-			if (!ItemEntry.ItemInstance && Ptr->ItemInstance)
-			{
-				RefreshItemInstance();
-				return;
-			}
-			
-			if (Ptr->ItemInstance && Ptr->ItemInstance->GetClass() != ItemEntry.ItemInstance->GetClass())
-			{
-				RefreshItemInstance();
-				return;
-			}
+			RefreshItemInstance();
 		}
 	}
 }
 
 void AInventoryItemActor::OnItemDefPropertyChanged(const FPropertyChangedEvent& PropertyChangedEvent)
 {
+	if (PropertyChangedEvent.GetMemberPropertyName() == GET_MEMBER_NAME_CHECKED(UInventoryItemDefinition, ItemSlotDataDefinition))
+	{
+		RefreshItemInstance();
+	}
+	
 	CheckShouldRefresh();
 }
 
@@ -179,21 +153,13 @@ void AInventoryItemActor::PostEditChangeChainProperty(struct FPropertyChangedCha
 {
 	Super::PostEditChangeChainProperty(PropertyChangedEvent);
 	
-	if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(ThisClass, ItemEntry) &&
-		PropertyChangedEvent.Property->GetFName() == GET_MEMBER_NAME_CHECKED(FInventoryItemEntry, ItemStack))
+	if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(ThisClass, ItemEntry))
 	{
 		if (ItemEntry.ItemDefinition)
 		{
-			const auto InstanceFrag = ItemEntry.ItemDefinition->GetFragmentPtr<FItemFragment_ItemInstance>();
-			if (InstanceFrag && InstanceFrag->ItemInstance->Implements<UStackableItem>())
+			if (const auto CDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
 			{
-				ItemEntry.ItemStack = 1;
-				return;
-			}
-
-			if (const auto Stackable = ItemEntry.ItemDefinition->GetFragmentPtr<FItemFragment_Stackable>())
-			{
-				ItemEntry.ItemStack = FMath::Clamp(ItemEntry.ItemStack, 1, Stackable->MaxStackAmount);
+				CDO->ValidateStackAmount(ItemEntry);
 			}
 		}
 	}
@@ -204,7 +170,7 @@ void AInventoryItemActor::PostEditChangeChainProperty(struct FPropertyChangedCha
 void AInventoryItemActor::TransToRuntimeActor()
 {
 	// Only persistent item actor can trans.
-	if (!UStreamingLevelSaveLibrary::IsRuntimeObject(this) && HasAuthority() && ItemEntry.ItemDefinition && ItemEntry.ItemDefinition->ItemActorDesc.IsValid())
+	if (HasAnyFlags(RF_WasLoaded) && HasAuthority() && ItemEntry.ItemDefinition && ItemEntry.ItemDefinition->ItemActorDesc.IsValid())
 	{
 		const auto Desc = ItemEntry.ItemDefinition->ItemActorDesc.GetPtr<FItemActorDescBase>();
 		FActorSpawnParameters SpawnParams;
@@ -218,8 +184,11 @@ void AInventoryItemActor::TransToRuntimeActor()
 void AInventoryItemActor::OnRep_ItemEntry()
 {
 	// Client change outer here.
-	if (ItemEntry.ItemInstance)
+	if (ItemEntry.ItemDefinition)
 	{
-		ItemEntry.ItemInstance->Rename(nullptr, this);
+		if (const auto CDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
+		{
+			CDO->PostBeginPlay(ItemEntry, this);
+		}
 	}
 }
