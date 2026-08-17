@@ -263,6 +263,7 @@ void UInventorySlotData_ItemInstance::LoadSlotData_Implementation(FInventoryItem
 	}
 }
 
+#if WITH_EDITOR
 bool UInventorySlotData_ItemInstance::ShouldRefreshItemEntry_Implementation(const FInventoryItemEntry& ItemEntry) const
 {
 	// Not valid;
@@ -292,6 +293,7 @@ bool UInventorySlotData_ItemInstance::ShouldRefreshItemEntry_Implementation(cons
 
 	return false;
 }
+#endif
 
 void UInventorySlotData_ItemInstance::PostBeginPlay_Implementation(FInventoryItemEntry& ItemEntry,
                                                                    UObject* OuterObject) const

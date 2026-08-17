@@ -30,7 +30,7 @@ struct INVENTORYSYSTEM_API FItemSlotData_ItemInstance
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Instanced)
 	TObjectPtr<UInventoryItemInstance> ItemInstance;
 };
 
