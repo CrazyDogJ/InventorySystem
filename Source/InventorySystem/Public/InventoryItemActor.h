@@ -44,6 +44,8 @@ public:
 	void PostLoadItemEntry();
 public:
 #if WITH_EDITOR
+	// 修复：重新构造或更换物品定义时解除旧资产上的绑定。
+	TWeakObjectPtr<UInventoryItemDefinition> ObservedDefinition;
 	UFUNCTION(BlueprintCallable, CallInEditor, DisplayName = "Refresh Additional Item Slot Data", Category = "Item Actor")
 	void RefreshItemInstance();
 

@@ -52,7 +52,9 @@ AActor* UItemActorFactory::SpawnActor(UObject* InAsset, ULevel* InLevel, const F
 	if (!ItemActorDesc) return nullptr;
 
 	// Item Actor Spawn
-	const auto World = InLevel->GetWorld();
+	// 修复：关卡卸载期间不能向无效世界生成物品。
+	const auto World = InLevel ? InLevel->GetWorld() : nullptr;
+	if (!World) return nullptr;
 	auto Transform = InTransform;
 	Transform.SetScale3D(ItemActorDesc->Scale);
 	const auto NewActor = World->SpawnActor(ItemActorDesc->GetItemActorClass(), &Transform);

@@ -228,7 +228,7 @@ void UInventorySlotData_ItemInstance::EmptySlotData_Implementation(FInventoryIte
 	{
 		if (InstanceFragPtr->ItemInstance)
 		{
-			InstanceFragPtr->ItemInstance->ConditionalBeginDestroy();
+			// 修复：转移或复制的槽位可能仍引用实例，仅释放此槽的所有权。
 			InstanceFragPtr->ItemInstance = nullptr;
 		}
 	}

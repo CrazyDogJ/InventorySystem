@@ -21,6 +21,10 @@ protected:
 	virtual void NativeDestruct() override;
 	
 public:
+	// 修复：保留蓝图引用返回值；未绑定时每个控件使用自己的空列表。
+	UPROPERTY(Transient)
+	FInventoryItemList UnboundItemList;
+
 	// Pointer of the list.
 	FInventoryItemList* ItemListPtr = nullptr;
 	

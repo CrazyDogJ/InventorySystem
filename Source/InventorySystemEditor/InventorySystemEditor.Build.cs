@@ -23,6 +23,7 @@ public class InventorySystemEditor : ModuleRules
                 "Slate",
                 "SlateCore", 
                 "StructUtilsEditor",
+                "InstancedStructFragment"
             }
             
         );

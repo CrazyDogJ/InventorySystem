@@ -17,7 +17,8 @@ FInventoryItemEntry::FInventoryItemEntry(UObject* OuterObject, UInventoryItemDef
 	{
 		if (const auto CDO = ItemDefinition->GetSlotDataDefinitionCDO())
 		{
-			const auto SlotData = CDO->GetDefaultSlotData(InItemDefinition);
+			// 修复：实例型物品需要有效 Outer 才能创建其 UObject。
+			const auto SlotData = CDO->GetDefaultSlotData(InItemDefinition, OuterObject);
 			ItemSlotData = SlotData;
 		}
 	}
@@ -57,18 +58,19 @@ void FInventoryItemEntry::EmptySlot(const bool& bCallEmptyLogic, const bool& bCl
 		ItemSlotFilter = FItemSlotFilter();
 	}
 	
+	// 修复：先从原槽移交数据，再调用清理钩子，防止重入或转移后的实例被强制销毁。
+	FInventoryItemEntry Released;
+	Released.ItemDefinition = ItemDefinition;
+	Released.ItemSlotFilter = ItemSlotFilter;
+	Released.ItemSlotData = MoveTemp(ItemSlotData);
 	ItemDefinition = nullptr;
-	if (bCallEmptyLogic)
+	if (bCallEmptyLogic && Released.ItemDefinition)
 	{
-		if (ItemDefinition)
+		if (const auto CDO = Released.ItemDefinition->GetSlotDataDefinitionCDO())
 		{
-			if (const auto CDO = ItemDefinition->GetSlotDataDefinitionCDO())
-			{
-				CDO->EmptySlotData(*this);
-			}
+			CDO->EmptySlotData(Released);
 		}
 	}
-	ItemSlotData = FInstancedStruct();
 }
 
 int FInventoryItemEntry::GetStackAmount() const
@@ -220,15 +222,17 @@ void FInventoryItemList::RemoveSlots(TArray<int32> Indices)
 	{
 		if (ItemList.IsValidIndex(Index))
 		{
-			RemovedIndices.Add(Index);
+			RemovedIndices.AddUnique(Index);
 		}
 	}
 
 	OnItemListRemove.Broadcast(RemovedIndices);
 
+	// 修复：从后往前删除原索引，重复索引或数组收缩不会导致越界。
+	RemovedIndices.Sort(TGreater<int32>());
 	for (const auto Index : RemovedIndices)
 	{
-		ItemList.RemoveAt(Index, EAllowShrinking::No);
+		if (ItemList.IsValidIndex(Index)) ItemList.RemoveAt(Index, EAllowShrinking::No);
 	}
 	ItemList.Shrink();
 	
@@ -460,7 +464,9 @@ bool FInventoryItemList::CanAddItems(const FItemStackMapping& InItems) const
 	}
 	
 	// Copy list for calculation.
-	FInventoryItemList CopiedList = *this;
+	// 修复：容量试算只操作副本，避免注册临时复制对象或调用真实库存的监听器。
+	FInventoryItemList CopiedList;
+	CopiedList.ItemList = ItemList;
 	for (auto Item : InItems.Items)
 	{
 		if (const auto LoadedItem = Item.Key.LoadSynchronous())
@@ -477,7 +483,9 @@ bool FInventoryItemList::CanAddItems(const FItemStackMapping& InItems) const
 
 bool FInventoryItemList::CanExchangeItems(const FItemStackMapping& RemoveItems, const FItemStackMapping& AddItems) const
 {
-	FInventoryItemList CopiedList = *this;
+	// 修复：容量试算只操作副本，避免注册临时复制对象或调用真实库存的监听器。
+	FInventoryItemList CopiedList;
+	CopiedList.ItemList = ItemList;
 	if (CopiedList.CanRemoveItems(RemoveItems))
 	{
 		for (const auto Itr : RemoveItems.Items)
@@ -552,23 +560,26 @@ int FInventoryItemList::RemoveItemByDefinition(const UInventoryItemDefinition* I
 	TArray<int> DirtyIndex;
 	for (int i = ItemList.Num() - 1; i >= 0; --i)
 	{
-		if (!ItemList[i].IsSlotEmpty() && ItemList[i].ItemDefinition == ItemDef && LocalAmount > 0)
+		if (ItemList.IsValidIndex(i) && !ItemList[i].IsSlotEmpty() && ItemList[i].ItemDefinition == ItemDef && LocalAmount > 0)
 		{
 			if (ItemList[i].GetStackAmount() > LocalAmount)
 			{
-				ItemList[i].RemoveStack(Amount);
+				ItemList[i].RemoveStack(LocalAmount);
+				LocalAmount = 0;
 				MarkIndexChange(i);
 				break;
 			}
 			
 			if (ItemList[i].GetStackAmount() == LocalAmount)
 			{
+				LocalAmount = 0;
 				EmptySlotByIndex({i});
 				break;
 			}
 			
-			EmptySlotByIndex({i});
+			// 修复：清空操作可能广播并改变数组，先读取本槽数量。
 			LocalAmount -= ItemList[i].GetStackAmount();
+			EmptySlotByIndex({i});
 		}
 	}
 	
@@ -584,18 +595,23 @@ bool FInventoryItemList::AddItemByDefinition(UInventoryItemDefinition* ItemDef, 
 
 bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 {
-	if (ItemEntry.IsSlotEmpty()) return false;
+	// 修复：旧存档可留下槽数据却没有定义，不能继续堆叠。
+	if (!IsValid(ItemEntry.ItemDefinition)) return false;
 
 	// 1. Stack
 	int StackIndex = FindFirstStackableSlot(ItemEntry);
 	while (StackIndex >= 0)
 	{
+		// 修复：自定义堆叠逻辑未消耗物品时结束尝试，避免无限循环。
+		const int32 BeforeStack = ItemEntry.GetStackAmount();
 		const auto StackResult = ItemList[StackIndex].StackEntry(ItemEntry);
 		MarkIndexChange(StackIndex);
 		if (StackResult)
 		{
 			return true;
 		}
+
+		if (ItemEntry.GetStackAmount() >= BeforeStack) break;
 
 		// Find stack again.
 		StackIndex = FindFirstStackableSlot(ItemEntry);
@@ -615,8 +631,9 @@ bool FInventoryItemList::AddItem(FInventoryItemEntry& ItemEntry)
 			{
 				ItemInstance->ChangeOuter(OuterObject);
 			}
-			MarkIndexChange(EmptyIndex);
+			// 修复：先结束原槽转移，再通知可能调整库存数组的监听器。
 			ItemEntry.EmptySlot(false);
+			MarkIndexChange(EmptyIndex);
 			return true;
 		}
 
@@ -707,7 +724,8 @@ bool FInventoryItemList::DragDropItem(int DragIndex, FInventoryItemList& DropIte
 
 bool FInventoryItemList::QuickMoveItem(int FromIndex, FInventoryItemList& ToItemList)
 {
-	if (ItemList.IsValidIndex(FromIndex))
+	// 修复：同一列表快速移动可能把物品堆叠到自身。
+	if (this != &ToItemList && ItemList.IsValidIndex(FromIndex))
 	{
 		if (ToItemList.AddItem(ItemList[FromIndex]))
 		{

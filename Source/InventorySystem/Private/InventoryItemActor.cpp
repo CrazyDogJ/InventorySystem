@@ -45,10 +45,16 @@ void AInventoryItemActor::OnConstruction(const FTransform& Transform)
 	
 #if WITH_EDITOR
 	// Check item instance is updated.
-	if (GetWorld()->IsEditorWorld() && ItemEntry.ItemDefinition)
+	if (auto* Previous = ObservedDefinition.Get()) Previous->PropertyChangedDelegate.RemoveAll(this);
+	ObservedDefinition.Reset();
+	if (GetWorld() && GetWorld()->IsEditorWorld() && ItemEntry.ItemDefinition)
 	{
 		CheckShouldRefresh();
-		ItemEntry.ItemDefinition->PropertyChangedDelegate.AddUObject(this, &ThisClass::OnItemDefPropertyChanged);
+		ObservedDefinition = ItemEntry.ItemDefinition;
+		if (auto* Definition = ObservedDefinition.Get())
+		{
+			Definition->PropertyChangedDelegate.AddUObject(this, &ThisClass::OnItemDefPropertyChanged);
+		}
 	}
 #endif
 	
@@ -130,6 +136,8 @@ void AInventoryItemActor::RefreshItemInstance()
 
 void AInventoryItemActor::CheckShouldRefresh()
 {
+	// 修复：编辑器事件到达时物品定义可能已被清空。
+	if (!ItemEntry.ItemDefinition) return;
 	if (const auto CDO = ItemEntry.ItemDefinition->GetSlotDataDefinitionCDO())
 	{
 		if (CDO->ShouldRefreshItemEntry(ItemEntry))
@@ -153,7 +161,7 @@ void AInventoryItemActor::PostEditChangeChainProperty(struct FPropertyChangedCha
 {
 	Super::PostEditChangeChainProperty(PropertyChangedEvent);
 	
-	if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(ThisClass, ItemEntry))
+	if (PropertyChangedEvent.GetMemberPropertyName() == GET_MEMBER_NAME_CHECKED(ThisClass, ItemEntry))
 	{
 		if (ItemEntry.ItemDefinition)
 		{

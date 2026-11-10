@@ -19,16 +19,16 @@ void UInventoryUserWidget::NativeDestruct()
 
 FInventoryItemList& UInventoryUserWidget::GetItemList() const
 {
-	return *ItemListPtr;
+	return IsValid(InventoryContainer) ? InventoryContainer->ItemList : const_cast<FInventoryItemList&>(UnboundItemList);
 }
 
 bool UInventoryUserWidget::GetCurrentItemEntry(FInventoryItemEntry& OutItemEntry) const
 {
-	if (ItemListPtr)
+	if (IsValid(InventoryContainer))
 	{
-		if (ItemListPtr->ItemList.IsValidIndex(Index))
+		if (InventoryContainer->ItemList.ItemList.IsValidIndex(Index))
 		{
-			OutItemEntry = ItemListPtr->ItemList[Index];
+			OutItemEntry = InventoryContainer->ItemList.ItemList[Index];
 			return true;
 		}
 	}
@@ -39,7 +39,12 @@ bool UInventoryUserWidget::GetCurrentItemEntry(FInventoryItemEntry& OutItemEntry
 
 void UInventoryUserWidget::ManageDelegates(const bool& bManage)
 {
-	if (!ItemListPtr) return;
+	// 修复：容器销毁或控件复用时，不继续访问旧结构体地址。
+	if (!IsValid(InventoryContainer)) return;
+	ItemListPtr = &InventoryContainer->ItemList;
+	ItemListPtr->OnItemListAdd.RemoveAll(this);
+	ItemListPtr->OnItemListRemove.RemoveAll(this);
+	ItemListPtr->OnItemListChange.RemoveAll(this);
 	if (bManage)
 	{
 		if (bAssignAddEvent)
@@ -49,21 +54,13 @@ void UInventoryUserWidget::ManageDelegates(const bool& bManage)
 		if (bAssignChangeEvent)
 			ItemListPtr->OnItemListChange.AddUObject(this, &ThisClass::ListChangeEvent);
 	}
-	else
-	{
-		if (bAssignAddEvent)
-			ItemListPtr->OnItemListAdd.RemoveAll(this);
-		if (bAssignRemoveEvent)
-			ItemListPtr->OnItemListRemove.RemoveAll(this);
-		if (bAssignChangeEvent)
-			ItemListPtr->OnItemListChange.RemoveAll(this);
-	}
 }
 
 void UInventoryUserWidget::InitParams(UInventoryContainerComponent* InContainer, int InIndex)
 {
+	ManageDelegates(false);
 	InventoryContainer = InContainer;
-	ItemListPtr = &InContainer->ItemList;
+	ItemListPtr = IsValid(InContainer) ? &InContainer->ItemList : nullptr;
 	Index = InIndex;
 }
 
@@ -75,6 +72,7 @@ void UInventoryUserWidget::InitParamsPoolWidget(UInventoryContainerComponent* In
 
 void UInventoryUserWidget::ClearParams()
 {
+	ManageDelegates(false);
 	ItemListPtr = nullptr;
 	InventoryContainer = nullptr;
 	Index = -1;
@@ -88,7 +86,6 @@ void UInventoryUserWidget::NativePostInventoryInitialize()
 
 void UInventoryUserWidget::NativePreReleaseWidgetPool()
 {
-	ManageDelegates(false);
 	ClearParams();
 	PreReleaseWidgetPool();
 }

@@ -13,7 +13,7 @@ class INVENTORYSYSTEMEDITOR_API FItemEntryPropertyTypeCustomization : public IPr
 public:
 	static TSharedRef<IPropertyTypeCustomization> MakeInstance();
 	
-	FReply OnPickDataAssetClicked(TSharedRef<IPropertyHandle> PropertyHandle, FInventoryItemEntry* CurrentEntry, UObject* CurrentOuter);
+	static FReply OnPickDataAssetClicked(TSharedRef<IPropertyHandle> PropertyHandle);
 	
 	virtual void CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils) override;
 	virtual void CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils) override;

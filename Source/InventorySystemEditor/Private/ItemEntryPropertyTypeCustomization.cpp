@@ -18,7 +18,7 @@ TSharedRef<IPropertyTypeCustomization> FItemEntryPropertyTypeCustomization::Make
 	return MakeShared<FItemEntryPropertyTypeCustomization>();
 }
 
-FReply FItemEntryPropertyTypeCustomization::OnPickDataAssetClicked(TSharedRef<IPropertyHandle> PropertyHandle, FInventoryItemEntry* CurrentEntry, UObject* CurrentOuter)
+FReply FItemEntryPropertyTypeCustomization::OnPickDataAssetClicked(TSharedRef<IPropertyHandle> PropertyHandle)
 {
 	FAssetPickerConfig AssetPickerConfig;
 	AssetPickerConfig.Filter.ClassPaths.Add(UInventoryItemDefinition::StaticClass()->GetClassPathName());
@@ -26,20 +26,26 @@ FReply FItemEntryPropertyTypeCustomization::OnPickDataAssetClicked(TSharedRef<IP
 	AssetPickerConfig.SelectionMode = ESelectionMode::Single;
 	AssetPickerConfig.bAllowNullSelection = false;
 
-	AssetPickerConfig.OnAssetSelected = FOnAssetSelected::CreateLambda([PropertyHandle, CurrentEntry, CurrentOuter](const FAssetData& AssetData)
+	AssetPickerConfig.OnAssetSelected = FOnAssetSelected::CreateLambda([PropertyHandle](const FAssetData& AssetData)
 	{
 		UObject* SelectedObj = AssetData.GetAsset();
 		if (UInventoryItemDefinition* SelectedDataAsset = Cast<UInventoryItemDefinition>(SelectedObj))
 		{
-			if (CurrentEntry)
+			// 修复：非模态窗口打开期间属性或数组可能重建，选择时重新解析地址。
+			void* RawData = nullptr;
+			TArray<UObject*> Owners;
+			PropertyHandle->GetOuterObjects(Owners);
+			if (PropertyHandle->IsValidHandle() && Owners.Num() == 1 && IsValid(Owners[0])
+				&& PropertyHandle->GetValueData(RawData) == FPropertyAccess::Success && RawData)
 			{
+				auto* CurrentEntry = static_cast<FInventoryItemEntry*>(RawData);
 				CurrentEntry->EmptySlot();
 				CurrentEntry->ItemDefinition = SelectedDataAsset;
 				if (SelectedDataAsset)
 				{
 					if (const auto CDO = CurrentEntry->ItemDefinition->GetSlotDataDefinitionCDO())
 					{
-						CurrentEntry->ItemSlotData = CDO->GetDefaultSlotData(SelectedDataAsset);
+						CurrentEntry->ItemSlotData = CDO->GetDefaultSlotData(SelectedDataAsset, Owners[0]);
 					}
 				}
 				PropertyHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
@@ -81,35 +87,9 @@ void FItemEntryPropertyTypeCustomization::CustomizeHeader(TSharedRef<IPropertyHa
 	[
 		SNew(SButton)
 		.Text(FText::FromString(TEXT("Init")))
-		.OnClicked_Lambda([this, PropertyHandle]()
+		.OnClicked_Lambda([PropertyHandle]()
 		{
-			// 1. 获取 StructProperty
-			FStructProperty* StructProp =
-				CastField<FStructProperty>(PropertyHandle->GetProperty());
-
-			if (!StructProp || StructProp->Struct != FInventoryItemEntry::StaticStruct())
-			{
-				return FReply::Handled();
-			}
-
-			// 2. 获取结构体内存
-			void* RawData = nullptr;
-			PropertyHandle->GetValueData(RawData);
-
-			if (!RawData)
-			{
-				return FReply::Handled();
-			}
-
-			// 3. 转换为你的结构体并调用函数
-			TArray<UObject*> OuterObjects;
-			PropertyHandle->GetOuterObjects(OuterObjects);
-			if (OuterObjects.Num() > 0 && OuterObjects[0])
-			{
-				OnPickDataAssetClicked(PropertyHandle, static_cast<FInventoryItemEntry*>(RawData), OuterObjects[0]);
-			}
-			
-			return FReply::Handled();
+			return OnPickDataAssetClicked(PropertyHandle);
 		})
 	];
 }

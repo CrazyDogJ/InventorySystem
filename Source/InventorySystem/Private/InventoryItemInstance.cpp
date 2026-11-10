@@ -83,7 +83,8 @@ UInventoryItemInstance* UInventoryItemInstance::NewItemInstance(UObject* Outer, 
 		ItemInstanceClass = Frag->ItemInstance.LoadSynchronous();
 	}
 	
-	if (!ItemInstanceClass)
+	// 修复：抽象实例类不能用于 NewObject。
+	if (!ItemInstanceClass || ItemInstanceClass->HasAnyClassFlags(CLASS_Abstract))
 	{
 		UE_LOG(LogInventorySystem, Display, TEXT("InventoryItemInstance::NewItemInstance : Item Instance in %s is not valid!"),
 			*InItemDefinition->GetName());

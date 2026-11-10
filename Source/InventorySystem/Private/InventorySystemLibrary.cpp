@@ -159,7 +159,8 @@ AInventoryItemActor* UInventorySystemLibrary::DropItemActor(const UObject* World
 	const FTransform& ActorTransform, const FInventoryItemEntry& ItemEntry)
 {
 	if (!WorldContextObject) return nullptr;
-	if (ItemEntry.IsSlotEmpty()) return nullptr;
+	// 修复：槽数据和定义可独立编辑或复制，必须验证将要解引用的定义。
+	if (!IsValid(ItemEntry.ItemDefinition)) return nullptr;
 	if (!ItemEntry.ItemDefinition->ItemActorDesc.IsValid()) return nullptr;
 	const auto Ptr = ItemEntry.ItemDefinition->ItemActorDesc.GetPtr<>();
 	if (!Ptr->bCanDrop)
@@ -172,6 +173,8 @@ AInventoryItemActor* UInventorySystemLibrary::DropItemActor(const UObject* World
 	if (!World) return nullptr;
 
 	const auto NewItemActor = World->SpawnActorDeferred<AInventoryItemActor>(ActorClass, ActorTransform);
+	// 修复：生成被世界或类配置拒绝时保留原物品。
+	if (!IsValid(NewItemActor)) return nullptr;
 	NewItemActor->ItemEntry = ItemEntry;
 	if (const auto Def = NewItemActor->ItemEntry.ItemDefinition)
 	{
@@ -226,7 +229,7 @@ void UInventorySystemLibrary::SetupItemActor(AInventoryItemActor* InItemActor, U
 		InItemActor->ItemEntry.ItemDefinition = InItemDefinition;
 		if (const auto CDO = InItemDefinition->GetSlotDataDefinitionCDO())
 		{
-			InItemActor->ItemEntry.ItemSlotData = CDO->GetDefaultSlotData(InItemDefinition);
+			InItemActor->ItemEntry.ItemSlotData = CDO->GetDefaultSlotData(InItemDefinition, InItemActor); // 修复：由物品 Actor 持有新实例。
 		}
 
 		if (bNeedConstruct)
