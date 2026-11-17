@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -6,6 +6,7 @@
 #include "InventoryEntryInterface.h"
 #include "InventoryListContainer.h"
 #include "GameFramework/Actor.h"
+#include "InventorySaveGame.h"
 #include "InventoryItemActor.generated.h"
 
 class UInventoryItemDefinition;
@@ -14,6 +15,16 @@ UCLASS()
 class INVENTORYSYSTEM_API AInventoryItemActor : public AActor, public IInventoryEntryInterface
 {
 	GENERATED_BODY()
+
+protected:
+	virtual void Serialize(FArchive& Ar) override;
+
+private:
+	UPROPERTY(SaveGame)
+	bool bHasInventorySnapshot = false;
+	UPROPERTY(SaveGame)
+	FInventoryItemEntrySaveData InventorySnapshot;
+
 	
 protected:
 	virtual void BeginPlay() override;

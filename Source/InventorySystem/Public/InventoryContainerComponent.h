@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -7,6 +7,7 @@
 #include "InventoryItemDefinition.h"
 #include "Components/ActorComponent.h"
 #include "InventoryListContainer.h"
+#include "InventorySaveGame.h"
 #include "InventoryContainerComponent.generated.h"
 
 class UInventoryItemAction;
@@ -21,6 +22,17 @@ UCLASS(ClassGroup=(Inventory), meta=(BlueprintSpawnableComponent), Blueprintable
 class INVENTORYSYSTEM_API UInventoryContainerComponent : public UActorComponent
 {
 	GENERATED_BODY()
+
+protected:
+	virtual void Serialize(FArchive& Ar) override;
+
+private:
+	UPROPERTY(SaveGame)
+	bool bHasInventorySnapshot = false;
+	bool bRestoredInventory = false;
+	UPROPERTY(SaveGame)
+	FInventoryItemListSaveData InventorySnapshot;
+
 
 public:
 	// Virtual function override

@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "InventoryContainerComponent.h"
@@ -81,7 +81,7 @@ void UInventoryContainerComponent::BeginPlay()
 {
 	// Init item list.
 	ItemList.OuterObject = this;
-	if (bShouldInit && GetOwner()->HasAuthority())
+	if (bShouldInit && !bRestoredInventory && GetOwner()->HasAuthority())
 	{
 		for (int i = 0; i < InitItemList.ItemList.Num(); ++i)
 		{
@@ -142,3 +142,18 @@ void UInventoryContainerComponent::PostEditChangeChainProperty(struct FPropertyC
 }
 
 #endif
+void UInventoryContainerComponent::Serialize(FArchive& Ar)
+{
+	if (!Ar.IsSaveGame() || IsTemplate()) { Super::Serialize(Ar); return; }
+	bHasInventorySnapshot = Ar.IsSaving();
+	if (Ar.IsSaving()) InventorySnapshot.SaveList(ItemList);
+	Super::Serialize(Ar);
+	if (Ar.IsLoading() && bHasInventorySnapshot)
+	{
+		ItemList.OuterObject = this;
+		InventorySnapshot.LoadList(ItemList, this);
+		bRestoredInventory = true;
+	}
+	InventorySnapshot = {};
+	bHasInventorySnapshot = false;
+}

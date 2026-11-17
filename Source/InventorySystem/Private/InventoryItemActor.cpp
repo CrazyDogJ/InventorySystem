@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "InventoryItemActor.h"
@@ -177,16 +177,26 @@ void AInventoryItemActor::PostEditChangeChainProperty(struct FPropertyChangedCha
 
 void AInventoryItemActor::TransToRuntimeActor()
 {
-	// Only persistent item actor can trans.
-	if (HasAnyFlags(RF_WasLoaded) && HasAuthority() && ItemEntry.ItemDefinition && ItemEntry.ItemDefinition->ItemActorDesc.IsValid())
-	{
-		const auto Desc = ItemEntry.ItemDefinition->ItemActorDesc.GetPtr<FItemActorDescBase>();
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Template = this;
-		const FTransform Empty = FTransform::Identity;
-		GetWorld()->SpawnActor(Desc->GetItemActorClass(), &Empty, SpawnParams);
-		Destroy(true);
-	}
+	if (!HasAnyFlags(RF_WasLoaded) || !HasAuthority() || !ItemEntry.ItemDefinition) return;
+	const auto* Desc = ItemEntry.ItemDefinition->ItemActorDesc.GetPtr<FItemActorDescBase>();
+	if (!Desc || !Desc->GetItemActorClass()) return;
+	FInventoryItemEntrySaveData Saved;
+	Saved.SaveEntry(ItemEntry);
+	const FTransform Transform = GetActorTransform();
+	FActorSpawnParameters Params;
+	if (Desc->GetItemActorClass() == GetClass()) Params.Template = this;
+	Params.TransformScaleMethod = ESpawnActorScaleMethod::OverrideRootScale;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	Params.bDeferConstruction = true;
+	AInventoryItemActor* Replacement = GetWorld()->SpawnActor<AInventoryItemActor>(Desc->GetItemActorClass(), Transform, Params);
+	if (!IsValid(Replacement)) return;
+	// Mutable item instances must belong to the replacement before the old actor empties its slot.
+	Replacement->ItemEntry = {};
+	Saved.LoadEntry(Replacement->ItemEntry, Replacement);
+	Replacement->FinishSpawning(Transform, true);
+	if (!IsValid(Replacement)) return;
+	if (Destroy(true)) Replacement->PostTransRuntime();
+	else Replacement->Destroy();
 }
 
 void AInventoryItemActor::OnRep_ItemEntry()
@@ -199,4 +209,19 @@ void AInventoryItemActor::OnRep_ItemEntry()
 			CDO->PostBeginPlay(ItemEntry, this);
 		}
 	}
+}
+
+void AInventoryItemActor::Serialize(FArchive& Ar)
+{
+	if (!Ar.IsSaveGame() || IsTemplate()) { Super::Serialize(Ar); return; }
+	bHasInventorySnapshot = Ar.IsSaving();
+	if (Ar.IsSaving()) InventorySnapshot.SaveEntry(ItemEntry);
+	Super::Serialize(Ar);
+	if (Ar.IsLoading() && bHasInventorySnapshot)
+	{
+		InventorySnapshot.LoadEntry(ItemEntry, this);
+		PostLoadItemEntry();
+	}
+	InventorySnapshot = {};
+	bHasInventorySnapshot = false;
 }
